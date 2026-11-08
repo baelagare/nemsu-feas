@@ -1,0 +1,102 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        canvas: {
+          subtle: '#F8FAFC',
+          panel: '#FFFFFF',
+          hover: '#F1F5F9',
+          inset: '#F1F5F9',
+        },
+        navy: {
+          950: '#040F21',
+          900: '#0B2545',
+          850: '#10315B',
+          800: '#133C6E',
+          700: '#1B4D89',
+        },
+        brand: {
+          blue: '#0B2545',
+          blueHover: '#133C6E',
+          blueActive: '#040F21',
+        },
+        slate: {
+          50: '#F8FAFC',
+          100: '#F1F5F9',
+          200: '#E2E8F0',
+          300: '#CBD5E1',
+          400: '#94A3B8',
+          500: '#64748B',
+          600: '#475569',
+          700: '#334155',
+          800: '#1E293B',
+          900: '#0F172A',
+        },
+        semantic: {
+          success: '#16A34A',
+          successSubtle: '#F0FDF4',
+          successBorder: '#BBF7D0',
+          warning: '#D97706',
+          warningSubtle: '#FFFBEB',
+          warningBorder: '#FDE68A',
+          danger: '#DC2626',
+          dangerSubtle: '#FEF2F2',
+          dangerBorder: '#FECACA',
+          info: '#2563EB',
+          infoSubtle: '#EFF6FF',
+          infoBorder: '#BFDBFE',
+        },
+      },
+      fontFamily: {
+        sans: [
+          'Plus Jakarta Sans',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'sans-serif',
+        ],
+        display: [
+          'Plus Jakarta Sans',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'sans-serif',
+        ],
+        mono: [
+          'ui-monospace',
+          'SFMono-Regular',
+          'Menlo',
+          'Monaco',
+          'Consolas',
+          'monospace',
+        ],
+      },
+      letterSpacing: {
+        tighter: '-0.03em',
+        tight: '-0.02em',
+        snug: '-0.01em',
+        normal: '0em',
+        wide: '0.025em',
+        wider: '0.05em',
+        widest: '0.1em',
+      },
+      boxShadow: {
+        hairline: '0 0 0 1px rgba(15, 23, 42, 0.08)',
+        subtle: '0 1px 2px 0 rgba(15, 23, 42, 0.04)',
+        card: '0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
+        elevated: '0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.04)',
+        command: '0 10px 25px -5px rgba(7, 29, 69, 0.12), 0 8px 10px -6px rgba(7, 29, 69, 0.06)',
+      },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+    },
+  },
+  plugins: [],
+};
