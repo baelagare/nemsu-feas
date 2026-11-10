@@ -26,10 +26,11 @@ Route::prefix('v1')->group(function () {
     // Health check endpoint
     Route::get('/health', HealthController::class);
 
-    // Authentication (Institutional Login & Google Sign-In)
+    // Authentication (Institutional Login, Google Sign-In & Student Session)
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
         Route::post('/google', [AuthController::class, 'google']);
+        Route::post('/student-session', [AuthController::class, 'studentSession']);
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('/me', [AuthController::class, 'me']);

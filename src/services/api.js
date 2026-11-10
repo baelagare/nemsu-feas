@@ -119,6 +119,17 @@ export function getReportExportUrl(academicPeriodId = null, departmentId = null)
 // Student Evaluation API
 // ---------------------------------------------------------------------------
 
+export async function initiateStudentSession(email) {
+  const data = await apiFetch('/auth/student-session', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+  if (data?.data?.token) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, data.data.token);
+  }
+  return data;
+}
+
 export async function fetchActiveAcademicPeriod() {
   return apiFetch('/academic-periods/active');
 }

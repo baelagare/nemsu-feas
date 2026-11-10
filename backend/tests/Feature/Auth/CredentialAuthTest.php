@@ -123,4 +123,57 @@ class CredentialAuthTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['identifier', 'password']);
     }
+
+    /**
+     * Test student can initiate session with institutional NEMSU email.
+     */
+    public function test_student_can_initiate_session_with_institutional_email(): void
+    {
+        $response = $this->postJson('/api/v1/auth/student-session', [
+            'email' => 'maria.student@nemsu.edu.ph',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'user' => [
+                        'email' => 'maria.student@nemsu.edu.ph',
+                        'role' => 'student',
+                    ],
+                ],
+            ]);
+
+        $this->assertNotEmpty($response->json('data.token'));
+    }
+
+    /**
+     * Test student session rejects non-institutional email.
+     */
+    public function test_student_session_rejects_non_institutional_email(): void
+    {
+        $response = $this->postJson('/api/v1/auth/student-session', [
+            'email' => 'random@gmail.com',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+            ]);
+    }
+
+    /**
+     * Test student session rejects administrative account.
+     */
+    public function test_student_session_rejects_admin_role_account(): void
+    {
+        $response = $this->postJson('/api/v1/auth/student-session', [
+            'email' => 'hr.admin@nemsu.edu.ph',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+            ]);
+    }
 }

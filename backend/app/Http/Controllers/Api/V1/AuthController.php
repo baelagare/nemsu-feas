@@ -57,6 +57,54 @@ class AuthController extends Controller
     }
 
     /**
+     * Verify student institutional email and issue evaluation session token.
+     */
+    public function studentSession(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $email = strtolower(trim($validated['email']));
+        $allowedDomain = config('services.google.allowed_domain', 'nemsu.edu.ph');
+
+        if (! str_ends_with($email, '@' . $allowedDomain)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Access restricted. Only verified NEMSU institutional accounts (@{$allowedDomain}) are permitted.",
+            ], 403);
+        }
+
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name' => 'NEMSU Student Evaluator',
+                'role' => 'student',
+                'student_id' => 'STU-' . strtoupper(substr(md5($email), 0, 8)),
+                'password' => Hash::make(bin2hex(random_bytes(16))),
+            ]
+        );
+
+        if ($user->role !== 'student') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Administrative and Faculty accounts cannot submit student evaluations. Please use an institutional student email.',
+            ], 403);
+        }
+
+        $token = $user->createToken('student-eval-token', ['evaluations:submit', 'profile:read'])->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Student session verified.',
+            'data' => [
+                'token' => $token,
+                'user' => new UserResource($user),
+            ],
+        ]);
+    }
+
+    /**
      * Authenticate or register an institutional user via Google ID Token.
      */
     public function google(GoogleAuthRequest $request, GoogleAuthService $authService): JsonResponse
