@@ -1,111 +1,86 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  TOKEN_STORAGE_KEY,
+  loginWithCredentials,
+  getCurrentUser,
+  logoutUser,
+} from '../services/api';
 
 const AuthContext = createContext(null);
 
-// Static demo accounts for testing and demonstration
-export const DEMO_ACCOUNTS = [
-  {
-    email: 'hr.admin@nemsu.edu.ph',
-    password: 'admin123',
-    name: 'Dr. Evelyn V. Ramos',
-    role: 'HR Director',
-    staffId: 'HR-CAN-2024-01',
-    department: 'Human Resource Management Office',
-    campus: 'NEMSU – Cantilan Campus',
-  },
-  {
-    email: 'hr.staff@nemsu.edu.ph',
-    password: 'password123',
-    name: 'Michael R. Alcantara',
-    role: 'HR Performance Analyst',
-    staffId: 'HR-CAN-2024-04',
-    department: 'Human Resource Management Office',
-    campus: 'NEMSU – Cantilan Campus',
-  },
-];
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('nemsu_feas_hr_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Synchronize with localStorage
+  // Bootstrap session on page load if token is present
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('nemsu_feas_hr_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('nemsu_feas_hr_user');
-    }
-  }, [user]);
+    const bootstrapAuth = async () => {
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await getCurrentUser();
+        if (response?.data) {
+          setUser(response.data);
+        } else {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          setUser(null);
+        }
+      } catch (err) {
+        // Token invalid or expired
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    bootstrapAuth();
+  }, []);
 
   /**
-   * Static authentication verification
-   * Supports pre-configured demo accounts, or any valid @nemsu.edu.ph email for flexible testing
+   * Log in via institutional email / staff ID and password.
    */
   const login = async (identifier, password) => {
     setIsLoading(true);
+    try {
+      const response = await loginWithCredentials(identifier, password);
+      if (response?.success && response?.data) {
+        const { token, user: authenticatedUser } = response.data;
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        setUser(authenticatedUser);
+        return { success: true, user: authenticatedUser };
+      }
 
-    // Simulate authentic network latency for realistic HCI status visibility
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    const cleanId = identifier.trim().toLowerCase();
-    const cleanPass = password.trim();
-
-    // Check specific demo accounts first
-    const matched = DEMO_ACCOUNTS.find(
-      (acc) =>
-        (acc.email.toLowerCase() === cleanId || acc.staffId.toLowerCase() === cleanId) &&
-        acc.password === cleanPass
-    );
-
-    if (matched) {
-      const authenticatedUser = {
-        email: matched.email,
-        name: matched.name,
-        role: matched.role,
-        staffId: matched.staffId,
-        department: matched.department,
-        campus: matched.campus,
-        loginAt: new Date().toISOString(),
+      return {
+        success: false,
+        error: response?.message || 'Authentication failed. Please verify your credentials.',
       };
-      setUser(authenticatedUser);
-      setIsLoading(false);
-      return { success: true };
-    }
-
-    // Fallback: If tester inputs any valid @nemsu.edu.ph email with password "admin123" or "password123"
-    if (cleanId.includes('@nemsu.edu.ph') && (cleanPass === 'admin123' || cleanPass === 'password123')) {
-      const fallbackUser = {
-        email: cleanId,
-        name: cleanId.split('@')[0].replace('.', ' ').toUpperCase(),
-        role: 'HR Officer',
-        staffId: 'HR-DEMO-99',
-        department: 'Human Resource Management Office',
-        campus: 'NEMSU – Cantilan Campus',
-        loginAt: new Date().toISOString(),
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || 'Authentication failed. Please check your credentials.',
       };
-      setUser(fallbackUser);
+    } finally {
       setIsLoading(false);
-      return { success: true };
     }
-
-    setIsLoading(false);
-    return {
-      success: false,
-      error: 'Invalid credentials. Please verify your institutional email and password.',
-    };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('nemsu_feas_hr_user');
+  /**
+   * Log out and revoke session token.
+   */
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      // Ignore network errors during sign out
+    } finally {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      setUser(null);
+    }
   };
 
   return (
@@ -116,7 +91,6 @@ export function AuthProvider({ children }) {
         isLoading,
         login,
         logout,
-        demoAccounts: DEMO_ACCOUNTS,
       }}
     >
       {children}

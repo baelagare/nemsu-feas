@@ -4,64 +4,7 @@
  * Student Evaluation of Teachers (SET)
  */
 
-export const DEPARTMENTS = [
-  {
-    id: 'DCS',
-    code: 'DCS',
-    name: 'Department of Computer Studies (DCS)',
-    faculty: [
-      'Engr. Neil Joshua Ramos',
-      'Prof. Aileen Grace Morales',
-      'Mr. Mark Kevin Tan',
-      'Dr. Bryan Christopher Cruz',
-      'Ms. Mary Hazel Diaz',
-    ],
-  },
-  {
-    id: 'DBM',
-    code: 'DBM',
-    name: 'Department of Business and Management (DBM)',
-    faculty: [
-      'Dr. Arthur Pendelton',
-      'Prof. Maria Santos',
-      'Prof. Karen Mae Dizon',
-      'Mr. Jonathan B. Flores',
-    ],
-  },
-  {
-    id: 'DIT',
-    code: 'DIT',
-    name: 'Department of Industrial Technology (DIT)',
-    faculty: [
-      'Engr. Roberto Alcantara',
-      'Prof. Danilo Villanueva',
-      'Ms. Jennifer Ocampo',
-      'Engr. Glenn Arreza',
-    ],
-  },
-  {
-    id: 'DGTT',
-    code: 'DGTT',
-    name: 'Department of General Teacher Education (DGTT)',
-    faculty: [
-      'Dr. Lourdes Mendoza',
-      'Prof. Francisca Reyes',
-      'Mr. Joseph Aranas',
-      'Dr. Elena M. Gomez',
-    ],
-  },
-  {
-    id: 'CCJE',
-    code: 'CCJE',
-    name: 'College of Criminal Justice Education (CCJE)',
-    faculty: [
-      'Atty. Ronald B. Dela Cruz',
-      'Capt. Eduardo M. Soriano',
-      'Prof. Catherine Joy Perez',
-      'Mr. Victoriano S. Balane',
-    ],
-  },
-];
+export const DEPARTMENTS = [];
 
 export const RATING_SCALE = [
   {

@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
-  KeyRound,
   HelpCircle,
 } from 'lucide-react';
 import UniversitySeal from '../components/UniversitySeal';
@@ -25,7 +24,7 @@ import { useAuth } from '../context/AuthContext';
 export default function HRLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading, demoAccounts } = useAuth();
+  const { login, isLoading } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -69,12 +68,7 @@ export default function HRLoginPage() {
     }
   };
 
-  // 1-Click Quick Fill for testing and demonstration
-  const handleQuickFill = (acc) => {
-    setIdentifier(acc.email);
-    setPassword(acc.password);
-    setError('');
-  };
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between text-slate-900">
@@ -155,9 +149,6 @@ export default function HRLoginPage() {
                 <p className="font-bold text-white">Human Resource Management Office</p>
                 <p className="text-slate-300 mt-0.5">NEMSU &ndash; Cantilan Campus</p>
               </div>
-              <span className="rounded bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white border border-white/15 shrink-0">
-                [PLACEHOLDER: AY / Sem]
-              </span>
             </div>
           </div>
 
@@ -326,37 +317,7 @@ export default function HRLoginPage() {
               </form>
             </div>
 
-            {/* Demo / Testing Quick-Fill Helper (Positioned below form so primary login leads hierarchy) */}
-            <div className="mt-7 pt-5 border-t border-slate-200">
-              <div className="rounded-xl bg-slate-50 p-4 border border-slate-200">
-                <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0B2545]">
-                    <KeyRound className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span>Quick Fill Demo Credentials</span>
-                  </div>
-                  <span className="rounded bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 border border-slate-200">
-                    Testing Mode
-                  </span>
-                </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {demoAccounts.map((acc, idx) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      onClick={() => handleQuickFill(acc)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 border border-slate-300 hover:border-[#0B2545] hover:text-[#0B2545] hover:bg-slate-50 transition-colors shadow-subtle"
-                      title={`Fill credentials for ${acc.name} (${acc.role})`}
-                    >
-                      <span className="font-bold text-[#0B2545]">
-                        {idx === 0 ? 'HR Director' : 'HR Analyst'}
-                      </span>
-                      <span className="text-slate-500">({acc.email})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </main>
@@ -387,19 +348,6 @@ export default function HRLoginPage() {
             <div className="space-y-3.5 text-xs sm:text-sm text-slate-600 leading-relaxed mb-6">
               <p>
                 Access to this portal is restricted to authorized HR Personnel, Department Chairpersons, and Academic Deans.
-              </p>
-              <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs sm:text-sm space-y-1.5">
-                <p className="font-bold text-slate-900">Demo Account Credentials:</p>
-                <p className="text-slate-700">
-                  Email: <strong className="font-bold text-[#0B2545]">hr.admin@nemsu.edu.ph</strong>
-                </p>
-                <p className="text-slate-700">
-                  Password: <strong className="font-bold text-[#0B2545]">admin123</strong>
-                </p>
-              </div>
-              <p>
-                For official account provisioning or password resets, please contact{' '}
-                <strong className="font-semibold text-slate-900">[PLACEHOLDER: Support Office / Email]</strong>.
               </p>
             </div>
 

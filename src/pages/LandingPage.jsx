@@ -39,9 +39,6 @@ export default function LandingPage() {
             </h1>
           </div>
         </div>
-        <span className="shrink-0 rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-white border border-white/20">
-          [PLACEHOLDER: AY / Sem]
-        </span>
       </div>
 
       {/* LEFT PANEL (Desktop Left / Mobile Below Role Selection):
@@ -57,10 +54,6 @@ export default function LandingPage() {
 
         {/* 2. Institutional Mandate & Structured Evaluation Standards */}
         <div className="my-6 lg:my-8 max-w-xl">
-          <div className="inline-flex items-center gap-2 rounded-md bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white border border-white/20 mb-4">
-            <span>Academic Period: [PLACEHOLDER: AY / Semester]</span>
-          </div>
-
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight mb-4">
             Faculty Performance Evaluation &amp; Academic Analytics
           </h2>
@@ -122,18 +115,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* 3. Authentic Academic Period Footer */}
-        <div className="pt-4 border-t border-white/15 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
-            <span className="font-semibold text-white">
-              Evaluation Status: [PLACEHOLDER: Status]
-            </span>
-          </div>
-          <span className="text-slate-300">
-            [PLACEHOLDER: Office / Contact Reference]
-          </span>
-        </div>
       </section>
 
       {/* RIGHT PANEL (Desktop Right / Mobile Top):

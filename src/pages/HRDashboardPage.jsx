@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut,
@@ -21,7 +21,12 @@ import {
 import UniversitySeal from '../components/UniversitySeal';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
-import { DEPARTMENTS } from '../data/evaluationData';
+import {
+  fetchAnalyticsOverview,
+  fetchDepartmentMetrics,
+  fetchFacultyRoster,
+  fetchFeedbackFeed,
+} from '../services/api';
 
 /**
  * HR & Academic Deans Administrative Analytics Portal.
@@ -30,175 +35,16 @@ import { DEPARTMENTS } from '../data/evaluationData';
  * across all 4 tabs (System Overview, Department Matrix, Faculty Roster, Qualitative Feedback).
  */
 
-// Complete structured dataset covering all 5 departments and 21 faculty members
-const DEPARTMENT_METRICS = [
-  {
-    code: 'DCS',
-    name: 'Department of Computer Studies',
-    dean: '[PLACEHOLDER: Department Dean / Chair]',
-    facultyCount: 5,
-    evaluatedCount: 5,
-    totalResponses: 246,
-    targetResponses: 260,
-    completion: 94.6,
-    sectionA: 4.76,
-    sectionB: 4.71,
-    sectionC: 4.69,
-    avgRating: 4.72,
-    status: 'High Turnout',
-  },
-  {
-    code: 'DBM',
-    name: 'Department of Business and Management',
-    dean: '[PLACEHOLDER: Department Dean / Chair]',
-    facultyCount: 4,
-    evaluatedCount: 4,
-    totalResponses: 198,
-    targetResponses: 225,
-    completion: 88.0,
-    sectionA: 4.64,
-    sectionB: 4.59,
-    sectionC: 4.60,
-    avgRating: 4.61,
-    status: 'On Track',
-  },
-  {
-    code: 'DIT',
-    name: 'Department of Industrial Technology',
-    dean: '[PLACEHOLDER: Department Dean / Chair]',
-    facultyCount: 4,
-    evaluatedCount: 4,
-    totalResponses: 154,
-    targetResponses: 185,
-    completion: 83.2,
-    sectionA: 4.55,
-    sectionB: 4.62,
-    sectionC: 4.57,
-    avgRating: 4.58,
-    status: 'On Track',
-  },
-  {
-    code: 'DGTT',
-    name: 'Department of General Teacher Education',
-    dean: '[PLACEHOLDER: Department Dean / Chair]',
-    facultyCount: 4,
-    evaluatedCount: 4,
-    totalResponses: 132,
-    targetResponses: 165,
-    completion: 80.0,
-    sectionA: 4.70,
-    sectionB: 4.65,
-    sectionC: 4.66,
-    avgRating: 4.67,
-    status: 'On Track',
-  },
-  {
-    code: 'CCJE',
-    name: 'College of Criminal Justice Education',
-    dean: '[PLACEHOLDER: Department Dean / Chair]',
-    facultyCount: 4,
-    evaluatedCount: 4,
-    totalResponses: 112,
-    targetResponses: 135,
-    completion: 83.0,
-    sectionA: 4.68,
-    sectionB: 4.61,
-    sectionC: 4.66,
-    avgRating: 4.65,
-    status: 'On Track',
-  },
-];
-
-// Full 21-member Faculty Evaluation Roster aligned with DEPARTMENTS in evaluationData.js
-const FULL_FACULTY_ROSTER = [
-  // DCS (5)
-  { id: 'f-1', name: 'Engr. Neil Joshua Ramos', dept: 'DCS', deptName: 'Department of Computer Studies', courses: 'IT 211 / CS 101', responses: 78, sectionA: 4.91, sectionB: 4.86, sectionC: 4.87, rating: 4.88, status: 'Outstanding', sampleRemark: 'Explains complex algorithms and data structures using clear, practical examples.' },
-  { id: 'f-2', name: 'Prof. Aileen Grace Morales', dept: 'DCS', deptName: 'Department of Computer Studies', courses: 'CS 220 / IT 312', responses: 62, sectionA: 4.78, sectionB: 4.75, sectionC: 4.75, rating: 4.76, status: 'Outstanding', sampleRemark: 'Provides structured laboratory guides and timely feedback on programming exercises.' },
-  { id: 'f-3', name: 'Dr. Bryan Christopher Cruz', dept: 'DCS', deptName: 'Department of Computer Studies', courses: 'CS 301 / IT 401', responses: 41, sectionA: 4.72, sectionB: 4.70, sectionC: 4.68, rating: 4.70, status: 'Outstanding', sampleRemark: 'Encourages critical thinking during capstone consultations and code reviews.' },
-  { id: 'f-4', name: 'Mr. Mark Kevin Tan', dept: 'DCS', deptName: 'Department of Computer Studies', courses: 'IT 102 / CS 110', responses: 35, sectionA: 4.66, sectionB: 4.62, sectionC: 4.64, rating: 4.64, status: 'Very Satisfactory', sampleRemark: 'Starts classes on time and shares complete course slides after every lecture.' },
-  { id: 'f-5', name: 'Ms. Mary Hazel Diaz', dept: 'DCS', deptName: 'Department of Computer Studies', courses: 'IT 204 / GE 105', responses: 30, sectionA: 4.65, sectionB: 4.60, sectionC: 4.61, rating: 4.62, status: 'Very Satisfactory', sampleRemark: 'Clear grading rubrics and approachable during scheduled consultation hours.' },
-  // DBM (4)
-  { id: 'f-6', name: 'Dr. Arthur Pendelton', dept: 'DBM', deptName: 'Department of Business and Management', courses: 'BM 301 / MGT 202', responses: 64, sectionA: 4.85, sectionB: 4.80, sectionC: 4.81, rating: 4.82, status: 'Outstanding', sampleRemark: 'Connects financial management concepts to local enterprise case studies.' },
-  { id: 'f-7', name: 'Prof. Maria Santos', dept: 'DBM', deptName: 'Department of Business and Management', courses: 'MKT 101 / BM 210', responses: 51, sectionA: 4.68, sectionB: 4.63, sectionC: 4.64, rating: 4.65, status: 'Very Satisfactory', sampleRemark: 'Well-organized syllabus and transparent computation of midterm and final grades.' },
-  { id: 'f-8', name: 'Prof. Karen Mae Dizon', dept: 'DBM', deptName: 'Department of Business and Management', courses: 'ACTG 101 / BM 105', responses: 45, sectionA: 4.54, sectionB: 4.50, sectionC: 4.52, rating: 4.52, status: 'Very Satisfactory', sampleRemark: 'Provides helpful problem sets that prepare students well for departmental exams.' },
-  { id: 'f-9', name: 'Mr. Jonathan B. Flores', dept: 'DBM', deptName: 'Department of Business and Management', courses: 'ENTREP 201 / BM 215', responses: 38, sectionA: 4.48, sectionB: 4.43, sectionC: 4.44, rating: 4.45, status: 'Very Satisfactory', sampleRemark: 'Interactive group discussions, though additional review sessions before exams would help.' },
-  // DIT (4)
-  { id: 'f-10', name: 'Engr. Roberto Alcantara', dept: 'DIT', deptName: 'Department of Industrial Technology', courses: 'IND 201 / TECH 104', responses: 46, sectionA: 4.70, sectionB: 4.72, sectionC: 4.68, rating: 4.70, status: 'Outstanding', sampleRemark: 'Demonstrates strong hands-on mastery during workshop and laboratory sessions.' },
-  { id: 'f-11', name: 'Prof. Danilo Villanueva', dept: 'DIT', deptName: 'Department of Industrial Technology', courses: 'AUTO 102 / IND 110', responses: 40, sectionA: 4.58, sectionB: 4.63, sectionC: 4.59, rating: 4.60, status: 'Very Satisfactory', sampleRemark: 'Emphasizes workshop safety protocols and clear practical assessment criteria.' },
-  { id: 'f-12', name: 'Ms. Jennifer Ocampo', dept: 'DIT', deptName: 'Department of Industrial Technology', courses: 'DRAFT 101 / TECH 202', responses: 36, sectionA: 4.50, sectionB: 4.58, sectionC: 4.54, rating: 4.54, status: 'Very Satisfactory', sampleRemark: 'Gives detailed step-by-step feedback on technical plates and CAD submissions.' },
-  { id: 'f-13', name: 'Engr. Glenn Arreza', dept: 'DIT', deptName: 'Department of Industrial Technology', courses: 'ELEC 201 / IND 301', responses: 32, sectionA: 4.42, sectionB: 4.55, sectionC: 4.47, rating: 4.48, status: 'Very Satisfactory', sampleRemark: 'Thorough laboratory demonstrations; students appreciate the extra troubleshooting guides.' },
-  // DGTT (4)
-  { id: 'f-14', name: 'Dr. Lourdes Mendoza', dept: 'DGTT', deptName: 'Department of General Teacher Education', courses: 'EDUC 101 / PROFED 4', responses: 52, sectionA: 4.77, sectionB: 4.72, sectionC: 4.73, rating: 4.74, status: 'Outstanding', sampleRemark: 'Models effective classroom management and inclusive teaching strategies.' },
-  { id: 'f-15', name: 'Prof. Francisca Reyes', dept: 'DGTT', deptName: 'Department of General Teacher Education', courses: 'PROFED 6 / EDUC 203', responses: 31, sectionA: 4.71, sectionB: 4.66, sectionC: 4.67, rating: 4.68, status: 'Very Satisfactory', sampleRemark: 'Provides constructive critiques on lesson plans and micro-teaching demonstrations.' },
-  { id: 'f-16', name: 'Dr. Elena M. Gomez', dept: 'DGTT', deptName: 'Department of General Teacher Education', courses: 'GE 101 / EDUC 108', responses: 26, sectionA: 4.68, sectionB: 4.62, sectionC: 4.65, rating: 4.65, status: 'Very Satisfactory', sampleRemark: 'Fosters an engaging, respectful learning environment where all students participate.' },
-  { id: 'f-17', name: 'Mr. Joseph Aranas', dept: 'DGTT', deptName: 'Department of General Teacher Education', courses: 'PE 102 / PROFED 2', responses: 23, sectionA: 4.64, sectionB: 4.60, sectionC: 4.59, rating: 4.61, status: 'Very Satisfactory', sampleRemark: 'Clear performance rubrics and consistent adherence to the course schedule.' },
-  // CCJE (4)
-  { id: 'f-18', name: 'Atty. Ronald B. Dela Cruz', dept: 'CCJE', deptName: 'College of Criminal Justice Education', courses: 'CLJ 101 / CRIM 210', responses: 58, sectionA: 4.82, sectionB: 4.77, sectionC: 4.78, rating: 4.79, status: 'Outstanding', sampleRemark: 'Presents criminal law jurisprudence with clarity and rigorous Socratic questioning.' },
-  { id: 'f-19', name: 'Capt. Eduardo M. Soriano', dept: 'CCJE', deptName: 'College of Criminal Justice Education', courses: 'CDI 101 / CRIM 105', responses: 22, sectionA: 4.66, sectionB: 4.60, sectionC: 4.63, rating: 4.63, status: 'Very Satisfactory', sampleRemark: 'Shares practical field investigation procedures aligned with course outcomes.' },
-  { id: 'f-20', name: 'Prof. Catherine Joy Perez', dept: 'CCJE', deptName: 'College of Criminal Justice Education', courses: 'CRIM 101 / SOC 102', responses: 18, sectionA: 4.62, sectionB: 4.55, sectionC: 4.63, rating: 4.60, status: 'Very Satisfactory', sampleRemark: 'Organized lecture modules and prompt return of graded written examinations.' },
-  { id: 'f-21', name: 'Mr. Victoriano S. Balane', dept: 'CCJE', deptName: 'College of Criminal Justice Education', courses: 'FORENSIC 1 / DT 101', responses: 14, sectionA: 4.62, sectionB: 4.52, sectionC: 4.60, rating: 4.58, status: 'Very Satisfactory', sampleRemark: 'Clear laboratory instructions and fair evaluation of practical exercises.' },
-];
-
-// Qualitative Feedback Themes & Anonymized Student Remarks
-const QUALITATIVE_FEEDBACK_THEMES = [
-  {
-    id: 'theme-1',
-    theme: 'Instructional Clarity & Concept Simplification',
-    category: 'Pedagogy',
-    sectionRef: 'Section B: Content, Knowledge, Pedagogy & Technology',
-    positiveRate: 96.2,
-    mentions: 84,
-    summary: 'Students consistently commend instructors who break down complex technical or theoretical topics using step-by-step demonstrations and local examples.',
-    remarks: [
-      { id: 'r-1', dept: 'DCS', course: 'IT 211', text: 'Explains complex algorithms and data structures using clear, practical analogies that make coding easier to grasp.' },
-      { id: 'r-2', dept: 'CCJE', course: 'CLJ 101', text: 'Presents criminal law provisions systematically and connects every article to real Supreme Court cases.' },
-      { id: 'r-3', dept: 'DBM', course: 'BM 301', text: 'Simplifies financial ratio analysis with step-by-step board examples before giving seatwork.' },
-    ],
-  },
-  {
-    id: 'theme-2',
-    theme: 'Punctuality & Structured Time Management',
-    category: 'Management',
-    sectionRef: 'Section A: Management of Teaching and Learning',
-    positiveRate: 94.8,
-    mentions: 67,
-    summary: 'High ratings are strongly correlated with instructors who begin sessions promptly, follow the syllabus timeline, and maximize laboratory/lecture hours.',
-    remarks: [
-      { id: 'r-4', dept: 'DCS', course: 'CS 101', text: 'Maximizes the full class schedule, starts sessions on time, and posts the weekly learning agenda ahead of class.' },
-      { id: 'r-5', dept: 'DGTT', course: 'EDUC 101', text: 'Follows the course syllabus closely so students always know upcoming requirements and reading assignments.' },
-    ],
-  },
-  {
-    id: 'theme-3',
-    theme: 'Grading Transparency & Prompt Assessment Feedback',
-    category: 'Transparency',
-    sectionRef: 'Section C: Commitment and Transparency',
-    positiveRate: 91.5,
-    mentions: 59,
-    summary: 'Evaluators value receiving clear grading rubrics at the start of the term and getting graded quizzes, plates, and lab outputs returned prior to major exams.',
-    remarks: [
-      { id: 'r-6', dept: 'DIT', course: 'DRAFT 101', text: 'Returns technical plates promptly with specific annotations on how to improve line weights and dimensions.' },
-      { id: 'r-7', dept: 'DBM', course: 'MKT 101', text: 'Explains the exact grading rubric for project presentations and shows transparent midterm grade computations.' },
-    ],
-  },
-  {
-    id: 'theme-4',
-    theme: 'Consultation Availability & Student Mentorship',
-    category: 'Commitment',
-    sectionRef: 'Section C: Commitment and Transparency',
-    positiveRate: 89.0,
-    mentions: 43,
-    summary: 'Students highlight the importance of accessible departmental consultation hours for capstone advising, remedial guidance, and academic support.',
-    remarks: [
-      { id: 'r-8', dept: 'DCS', course: 'IT 401', text: 'Available during scheduled consultation hours and patiently guides groups through thesis architecture revisions.' },
-      { id: 'r-9', dept: 'DGTT', course: 'PROFED 4', text: 'Very approachable when students ask for clarification on lesson plan formatting outside lecture hours.' },
-    ],
-  },
-];
-
 export default function HRDashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Live Data State
+  const [overview, setOverview] = useState(null);
+  const [departmentMetrics, setDepartmentMetrics] = useState([]);
+  const [facultyRoster, setFacultyRoster] = useState([]);
+  const [feedbackItems, setFeedbackItems] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Navigation & Interactive Filter State
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'departments' | 'faculty' | 'sentiment'
@@ -212,6 +58,75 @@ export default function HRDashboardPage() {
   const [selectedFacultyDetail, setSelectedFacultyDetail] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSuccessMessage, setExportSuccessMessage] = useState('');
+
+  // Fetch Live Analytics Data
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDashboardData() {
+      try {
+        setIsLoadingData(true);
+        const [overviewRes, deptRes, facRes, feedRes] = await Promise.all([
+          fetchAnalyticsOverview(),
+          fetchDepartmentMetrics(),
+          fetchFacultyRoster(),
+          fetchFeedbackFeed(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (overviewRes?.data) setOverview(overviewRes.data);
+
+        if (deptRes?.data) {
+          setDepartmentMetrics(
+            deptRes.data.map((d) => ({
+              id: d.id,
+              code: d.code,
+              name: d.name,
+              deanName: d.dean_name,
+              facultyCount: d.faculty_count,
+              totalResponses: d.evaluations_count,
+              targetResponses: d.target_evaluations,
+              completion: d.completion_rate,
+              avgRating: d.average_rating,
+              status: d.descriptive_rating,
+            }))
+          );
+        }
+
+        if (facRes?.data) {
+          setFacultyRoster(
+            facRes.data.map((f) => ({
+              id: f.id,
+              name: f.name,
+              email: f.email,
+              dept: f.department_code,
+              deptName: f.department_name,
+              courses: f.courses || 'Assigned Courses',
+              responses: f.evaluations_count,
+              rating: f.composite_mean,
+              sectionA: f.section_a_mean,
+              sectionB: f.section_b_mean,
+              sectionC: f.section_c_mean,
+              status: f.descriptive_rating,
+            }))
+          );
+        }
+
+        if (feedRes?.data) {
+          setFeedbackItems(feedRes.data);
+        }
+      } catch (err) {
+        console.error('Failed to load analytics dashboard data:', err);
+      } finally {
+        if (isMounted) setIsLoadingData(false);
+      }
+    }
+
+    loadDashboardData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -227,7 +142,7 @@ export default function HRDashboardPage() {
 
   // Filtered Departments
   const filteredDepartments = useMemo(() => {
-    return DEPARTMENT_METRICS.filter((dept) => {
+    return departmentMetrics.filter((dept) => {
       const matchesDept = selectedDeptFilter === 'ALL' || dept.code === selectedDeptFilter;
       const matchesSearch =
         !searchQuery.trim() ||
@@ -235,19 +150,19 @@ export default function HRDashboardPage() {
         dept.code.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesDept && matchesSearch;
     });
-  }, [selectedDeptFilter, searchQuery]);
+  }, [departmentMetrics, selectedDeptFilter, searchQuery]);
 
   // Filtered & Sorted Faculty Roster
   const filteredFaculty = useMemo(() => {
-    const filtered = FULL_FACULTY_ROSTER.filter((fac) => {
+    const filtered = facultyRoster.filter((fac) => {
       const matchesDept = selectedDeptFilter === 'ALL' || fac.dept === selectedDeptFilter;
       const matchesStatus = selectedStatusFilter === 'ALL' || fac.status === selectedStatusFilter;
       const matchesSearch =
         !searchQuery.trim() ||
         fac.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        fac.courses.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        fac.dept.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        fac.deptName.toLowerCase().includes(searchQuery.toLowerCase());
+        (fac.courses && fac.courses.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (fac.dept && fac.dept.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (fac.deptName && fac.deptName.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchesDept && matchesStatus && matchesSearch;
     });
 
@@ -258,68 +173,40 @@ export default function HRDashboardPage() {
       if (facultySortBy === 'name-asc') return a.name.localeCompare(b.name);
       return 0;
     });
-  }, [selectedDeptFilter, selectedStatusFilter, searchQuery, facultySortBy]);
+  }, [facultyRoster, selectedDeptFilter, selectedStatusFilter, searchQuery, facultySortBy]);
 
   // Filtered Qualitative Feedback Themes
   const filteredFeedbackThemes = useMemo(() => {
-    return QUALITATIVE_FEEDBACK_THEMES.filter((item) => {
-      const matchesCategory = feedbackCategory === 'ALL' || item.category === feedbackCategory;
+    return feedbackItems.filter((item) => {
       const matchesSearch =
         !searchQuery.trim() ||
-        item.theme.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.remarks.some(
-          (r) =>
-            r.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            r.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            r.dept.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      return matchesCategory && matchesSearch;
+        (item.comment && item.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.faculty_name && item.faculty_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.course_code && item.course_code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.department_code && item.department_code.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesSearch;
     });
-  }, [feedbackCategory, searchQuery]);
+  }, [feedbackItems, searchQuery]);
 
-  // Real CSV Export Handler for Testing
-  const handleDownloadCSV = () => {
-    const headers = [
-      'Faculty Name',
-      'Department Code',
-      'Department Name',
-      'Courses',
-      'Student Responses',
-      'Section A (Management)',
-      'Section B (Pedagogy)',
-      'Section C (Transparency)',
-      'Composite Mean Rating',
-      'Descriptive Rating',
-    ];
-    const rows = FULL_FACULTY_ROSTER.map((f) => [
-      `"${f.name}"`,
-      f.dept,
-      `"${f.deptName}"`,
-      `"${f.courses}"`,
-      f.responses,
-      f.sectionA.toFixed(2),
-      f.sectionB.toFixed(2),
-      f.sectionC.toFixed(2),
-      f.rating.toFixed(2),
-      `"${f.status}"`,
-    ]);
-
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'nemsu-feas-faculty-evaluation-report.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setExportSuccessMessage(
-      'CSV report (nemsu-feas-faculty-evaluation-report.csv) downloaded.'
-    );
+  // Real CSV Export Handler from Backend API
+  const handleDownloadCSV = async () => {
+    try {
+      const token = localStorage.getItem('nemsu_auth_token');
+      const response = await fetch('http://127.0.0.1:8001/api/v1/reports/export', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `nemsu-feas-faculty-evaluation-report-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setExportSuccessMessage('Official institutional audit report CSV downloaded successfully.');
+    } catch (err) {
+      console.error('Failed to export CSV report:', err);
+    }
   };
 
   const resetAllFilters = () => {
@@ -358,10 +245,10 @@ export default function HRDashboardPage() {
           <div className="flex items-center gap-3.5 shrink-0">
             <div className="hidden sm:flex flex-col text-right">
               <span className="text-xs sm:text-sm font-bold text-white leading-tight">
-                {user?.name || '[PLACEHOLDER: Administrator Name]'}
+                {user?.name}
               </span>
               <span className="text-xs font-medium text-slate-300">
-                {user?.role || 'HR Administrator'} &bull; {user?.staffId || '[PLACEHOLDER: Staff ID]'}
+                {user?.role || 'HR Administrator'}{user?.staffId ? ` \u2022 ${user.staffId}` : ''}
               </span>
             </div>
 
@@ -383,9 +270,9 @@ export default function HRDashboardPage() {
             <nav className="flex space-x-1" aria-label="Dashboard sections" role="tablist">
               {[
                 { id: 'overview', label: 'System Overview', count: null },
-                { id: 'departments', label: 'Department Matrix', count: DEPARTMENT_METRICS.length },
-                { id: 'faculty', label: 'Faculty Roster', count: FULL_FACULTY_ROSTER.length },
-                { id: 'sentiment', label: 'Qualitative Feedback', count: QUALITATIVE_FEEDBACK_THEMES.length },
+                { id: 'departments', label: 'Department Matrix', count: departmentMetrics.length },
+                { id: 'faculty', label: 'Faculty Roster', count: facultyRoster.length },
+                { id: 'sentiment', label: 'Qualitative Feedback', count: feedbackItems.length },
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -417,11 +304,6 @@ export default function HRDashboardPage() {
                 );
               })}
             </nav>
-
-            <div className="hidden lg:flex items-center gap-2 py-2 text-xs font-semibold text-slate-300 shrink-0">
-              <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
-              <span>Academic Period: [PLACEHOLDER: AY / Semester]</span>
-            </div>
           </div>
         </div>
       </header>
@@ -431,9 +313,6 @@ export default function HRDashboardPage() {
         {/* GLOBAL FILTER & ACTION TOOLBAR */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-xl bg-white p-4 sm:p-5 border border-slate-200 shadow-card">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center rounded-md bg-slate-100 px-3 py-1.5 text-xs font-bold text-[#0B2545] border border-slate-200">
-              [PLACEHOLDER: AY / Semester]
-            </span>
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">
                 {activeTab === 'overview' && 'Institutional Evaluation Overview'}
@@ -456,8 +335,8 @@ export default function HRDashboardPage() {
                 onChange={(e) => setSelectedDeptFilter(e.target.value)}
                 className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-800 focus:border-[#0B2545] focus-visible:ring-2 focus-visible:ring-[#0B2545]/20 transition-colors"
               >
-                <option value="ALL">All Departments (5)</option>
-                {DEPARTMENT_METRICS.map((d) => (
+                <option value="ALL">All Departments</option>
+                {departmentMetrics.map((d) => (
                   <option key={d.code} value={d.code}>
                     {d.code} &ndash; {d.name}
                   </option>
@@ -529,21 +408,13 @@ export default function HRDashboardPage() {
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                     Student Submissions
                   </span>
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-[#0B2545] border border-slate-200">
-                    85.9% Turnout
-                  </span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
-                    842
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500 tabular-nums">
-                    of 980 target
-                  </span>
+                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+                  {overview?.kpis?.total_evaluations ?? 0}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span> Verified Single-Entry</span>
-                  <span className="font-bold text-[#0B2545]">[PLACEHOLDER: Status]</span>
+                  <span>Verified Single-Entry</span>
+                  <span className="font-bold text-slate-700">{overview?.kpis?.completion_rate ?? 0}% Turnout</span>
                 </div>
               </div>
 
@@ -553,20 +424,12 @@ export default function HRDashboardPage() {
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                     Faculty Evaluated
                   </span>
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-[#0B2545] border border-slate-200">
-                    5 Departments
-                  </span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
-                    21
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500 tabular-nums">
-                    of 21 active roster
-                  </span>
+                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+                  {overview?.kpis?.evaluated_faculty_count ?? 0}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span>100% Roster Coverage</span>
+                  <span>Of {overview?.kpis?.active_faculty_count ?? 0} Active</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('faculty')}
@@ -587,16 +450,11 @@ export default function HRDashboardPage() {
                     5-Point Scale
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
-                    4.64
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500 tabular-nums">
-                    / 5.00
-                  </span>
+                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+                  {overview?.kpis?.overall_mean ? Number(overview.kpis.overall_mean).toFixed(2) : '0.00'}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span className="font-semibold text-slate-800">Often to Always Manifested</span>
+                  <span className="font-bold text-slate-700">{overview?.kpis?.descriptive_rating ?? 'No Evaluations'}</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('departments')}
@@ -613,20 +471,12 @@ export default function HRDashboardPage() {
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                     Written Remarks
                   </span>
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-[#0B2545] border border-slate-200">
-                    4 Core Themes
-                  </span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
-                    253
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    student comments
-                  </span>
+                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+                  {feedbackItems.length}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span>92.4% Constructive</span>
+                  <span>Qualitative Feedback</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('sentiment')}
@@ -714,7 +564,7 @@ export default function HRDashboardPage() {
                               </td>
                               <td className="py-4 px-3 text-right">
                                 <span className="inline-flex items-center justify-center rounded-md bg-[#0B2545] px-2 py-1 text-xs font-extrabold text-white tabular-nums">
-                                  {dept.avgRating.toFixed(2)}
+                                  {Number(dept.avgRating || 0).toFixed(2)}
                                 </span>
                               </td>
                               <td className="py-4 px-4 text-right">
@@ -732,12 +582,7 @@ export default function HRDashboardPage() {
                 </div>
 
                 <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-                  <span className="font-medium">
-                    Total Verified Responses: <strong className="font-bold text-slate-900 tabular-nums">842 / 980</strong>
-                  </span>
-                  <span className="font-bold text-[#0B2545] tabular-nums">
-                    85.9% Campus-Wide Turnout
-                  </span>
+                  <span className="font-medium">Total Verified Responses</span>
                 </div>
               </div>
 
@@ -759,7 +604,7 @@ export default function HRDashboardPage() {
                       onClick={() => setActiveTab('faculty')}
                       className="text-xs font-bold text-[#0B2545] hover:underline whitespace-nowrap"
                     >
-                      All {FULL_FACULTY_ROSTER.length} Faculty &rarr;
+                      All {facultyRoster.length} Faculty &rarr;
                     </button>
                   </div>
 
@@ -782,7 +627,7 @@ export default function HRDashboardPage() {
                         <div className="text-right shrink-0 flex items-center gap-3">
                           <div>
                             <span className="block text-sm font-extrabold text-[#0B2545] tabular-nums">
-                              {fac.rating.toFixed(2)}
+                              {Number(fac.rating || 0).toFixed(2)}
                             </span>
                             <span className="block text-[11px] font-medium text-slate-500 tabular-nums">
                               {fac.responses} evals
@@ -803,7 +648,7 @@ export default function HRDashboardPage() {
                         Student Feedback Themes
                       </h3>
                       <p className="text-xs text-slate-600 mt-0.5">
-                        recurring observations from written remarks
+                        recent observations from written remarks
                       </p>
                     </div>
                     <button
@@ -816,24 +661,30 @@ export default function HRDashboardPage() {
                   </div>
 
                   <div className="space-y-3">
-                    {QUALITATIVE_FEEDBACK_THEMES.slice(0, 2).map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70"
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="text-xs sm:text-sm font-bold text-slate-900">
-                            {item.theme}
-                          </span>
-                          <span className="rounded bg-[#0B2545] px-2 py-0.5 text-xs font-bold text-white tabular-nums shrink-0">
-                            {item.mentions} mentions
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          &ldquo;{item.remarks[0].text}&rdquo;
-                        </p>
+                    {feedbackItems.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 text-center">
+                        No student feedback remarks recorded yet.
                       </div>
-                    ))}
+                    ) : (
+                      feedbackItems.slice(0, 3).map((item) => (
+                        <div
+                          key={item.id}
+                          className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-xs sm:text-sm font-bold text-slate-900">
+                              {item.faculty_name}
+                            </span>
+                            <span className="rounded bg-[#0B2545] px-2 py-0.5 text-xs font-bold text-white tabular-nums shrink-0">
+                              {item.department_code}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                            &ldquo;{item.comment}&rdquo;
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -860,7 +711,7 @@ export default function HRDashboardPage() {
                   </p>
                 </div>
                 <span className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-800 border border-slate-200">
-                  Showing {filteredDepartments.length} of {DEPARTMENT_METRICS.length} Departments
+                  Showing {filteredDepartments.length} of {departmentMetrics.length} Departments
                 </span>
               </div>
 
@@ -890,11 +741,11 @@ export default function HRDashboardPage() {
                         <td className="py-4 px-5">
                           <div className="font-bold text-slate-900">{dept.name}</div>
                           <div className="text-xs text-slate-500 mt-0.5">
-                            Code: <strong className="font-semibold text-slate-700">{dept.code}</strong> &bull; {dept.dean}
+                            Code: <strong className="font-semibold text-slate-700">{dept.code}</strong> &bull; {dept.deanName}
                           </div>
                         </td>
                         <td className="py-4 px-3 text-center tabular-nums font-semibold text-slate-800">
-                          {dept.evaluatedCount} / {dept.facultyCount}
+                          {dept.facultyCount}
                         </td>
                         <td className="py-4 px-4 w-44">
                           <div className="flex items-center justify-between text-xs mb-1">
@@ -911,17 +762,17 @@ export default function HRDashboardPage() {
                           </div>
                         </td>
                         <td className="py-4 px-3 text-right tabular-nums font-semibold text-slate-700">
-                          {dept.sectionA.toFixed(2)}
+                          {Number(dept.sectionA || dept.avgRating || 0).toFixed(2)}
                         </td>
                         <td className="py-4 px-3 text-right tabular-nums font-semibold text-slate-700">
-                          {dept.sectionB.toFixed(2)}
+                          {Number(dept.sectionB || dept.avgRating || 0).toFixed(2)}
                         </td>
                         <td className="py-4 px-3 text-right tabular-nums font-semibold text-slate-700">
-                          {dept.sectionC.toFixed(2)}
+                          {Number(dept.sectionC || dept.avgRating || 0).toFixed(2)}
                         </td>
                         <td className="py-4 px-4 text-right">
                           <span className="inline-flex items-center justify-center rounded-md bg-[#0B2545] px-2.5 py-1 text-xs sm:text-sm font-extrabold text-white tabular-nums">
-                            {dept.avgRating.toFixed(2)}
+                            {Number(dept.avgRating || 0).toFixed(2)}
                           </span>
                         </td>
                         <td className="py-4 px-5 text-right">
@@ -956,7 +807,7 @@ export default function HRDashboardPage() {
                     Individual Instructor Performance
                   </span>
                   <h3 className="text-lg sm:text-xl font-extrabold text-slate-900">
-                    Evaluated Faculty Roster ({filteredFaculty.length} of {FULL_FACULTY_ROSTER.length})
+                    Evaluated Faculty Roster ({filteredFaculty.length} of {facultyRoster.length})
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
                     Click any instructor row or &ldquo;Inspect Report&rdquo; to view their Section A/B/C scores and student remarks.
@@ -1043,17 +894,17 @@ export default function HRDashboardPage() {
                             {fac.responses}
                           </td>
                           <td className="py-4 px-3 text-right tabular-nums text-slate-600">
-                            {fac.sectionA.toFixed(2)}
+                            {Number(fac.sectionA || 0).toFixed(2)}
                           </td>
                           <td className="py-4 px-3 text-right tabular-nums text-slate-600">
-                            {fac.sectionB.toFixed(2)}
+                            {Number(fac.sectionB || 0).toFixed(2)}
                           </td>
                           <td className="py-4 px-3 text-right tabular-nums text-slate-600">
-                            {fac.sectionC.toFixed(2)}
+                            {Number(fac.sectionC || 0).toFixed(2)}
                           </td>
                           <td className="py-4 px-4 text-right">
                             <span className="inline-flex items-center justify-center rounded-md bg-[#0B2545] px-2.5 py-1 text-xs font-extrabold text-white tabular-nums">
-                              {fac.rating.toFixed(2)}
+                              {Number(fac.rating || 0).toFixed(2)}
                             </span>
                           </td>
                           <td className="py-4 px-5 text-right">
@@ -1109,60 +960,52 @@ export default function HRDashboardPage() {
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80 border border-slate-200'
                       }`}
                     >
-                      {cat === 'ALL' ? 'All Domains (4)' : cat}
+                      {cat === 'ALL' ? 'All Domains' : cat}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Theme Cards */}
+            {/* Feedback Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {filteredFeedbackThemes.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-xl bg-white p-5 sm:p-6 border border-slate-200 shadow-card flex flex-col justify-between gap-4"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div>
-                        <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#0B2545] mb-1">
-                          {item.category} &bull; {item.sectionRef}
-                        </span>
-                        <h4 className="text-base sm:text-lg font-extrabold text-slate-900">
-                          {item.theme}
-                        </h4>
-                      </div>
-                      <span className="rounded-md bg-[#0B2545] px-2.5 py-1 text-xs font-extrabold text-white tabular-nums shrink-0">
-                        {item.mentions} Mentions
-                      </span>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
-                      {item.summary}
-                    </p>
-
-                    <div className="space-y-2.5 border-t border-slate-200 pt-4">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
-                        Verified Student Remarks (Anonymized)
-                      </span>
-                      {item.remarks.map((rem) => (
-                        <div
-                          key={rem.id}
-                          className="rounded-lg bg-slate-50 p-3.5 border border-slate-200 text-xs sm:text-sm text-slate-700"
-                        >
-                          <p className="leading-relaxed mb-1.5">
-                            &ldquo;{rem.text}&rdquo;
-                          </p>
-                          <div className="text-[11px] font-bold text-[#0B2545]">
-                            {rem.dept} &bull; Course: {rem.course}
-                          </div>
+              {filteredFeedbackThemes.length === 0 ? (
+                <div className="col-span-2 rounded-xl bg-white p-8 border border-slate-200 text-center text-slate-500">
+                  No qualitative feedback comments recorded yet for this view.
+                </div>
+              ) : (
+                filteredFeedbackThemes.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl bg-white p-5 sm:p-6 border border-slate-200 shadow-card flex flex-col justify-between gap-4"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div>
+                          <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#0B2545] mb-1">
+                            {item.department_code} &bull; Course: {item.course_code}
+                          </span>
+                          <h4 className="text-base sm:text-lg font-extrabold text-slate-900">
+                            {item.faculty_name}
+                          </h4>
                         </div>
-                      ))}
+                        <span className="rounded-md bg-[#0B2545] px-2.5 py-1 text-xs font-extrabold text-white tabular-nums shrink-0">
+                          Score: {item.composite_mean ? Number(item.composite_mean).toFixed(2) : 'N/A'}
+                        </span>
+                      </div>
+
+                      <div className="rounded-lg bg-slate-50 p-4 border border-slate-200 text-xs sm:text-sm text-slate-800 mt-2">
+                        <p className="leading-relaxed whitespace-pre-line">
+                          &ldquo;{item.comment}&rdquo;
+                        </p>
+                        <div className="text-[11px] font-bold text-slate-500 mt-2">
+                          Submitted on {item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Current Term'}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -1205,7 +1048,7 @@ export default function HRDashboardPage() {
                 <div className="rounded-xl bg-[#0B2545] p-4 text-white">
                   <span className="text-xs font-semibold text-slate-300 block">Composite Rating</span>
                   <span className="text-2xl font-extrabold tabular-nums mt-0.5 block">
-                    {selectedFacultyDetail.rating.toFixed(2)} / 5.00
+                    {Number(selectedFacultyDetail.rating || 0).toFixed(2)} / 5.00
                   </span>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-4 border border-slate-200">
@@ -1235,12 +1078,12 @@ export default function HRDashboardPage() {
                   <div key={sec.label} className="rounded-lg bg-slate-50 p-3.5 border border-slate-200">
                     <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-slate-900 mb-1.5">
                       <span>{sec.label}</span>
-                      <span className="tabular-nums text-[#0B2545]">{sec.score.toFixed(2)} / 5.00</span>
+                      <span className="tabular-nums text-[#0B2545]">{Number(sec.score || 0).toFixed(2)} / 5.00</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                       <div
                         className="h-full bg-[#0B2545] rounded-full"
-                        style={{ width: `${(sec.score / 5) * 100}%` }}
+                        style={{ width: `${(Number(sec.score || 0) / 5) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -1291,7 +1134,7 @@ export default function HRDashboardPage() {
                       Consolidated Faculty Evaluation Audit Report
                     </h3>
                     <p className="text-xs font-medium text-slate-500">
-                      NEMSU &ndash; Cantilan Campus &bull; [PLACEHOLDER: AY / Semester]
+                      NEMSU &ndash; Cantilan Campus
                     </p>
                   </div>
                 </div>
@@ -1313,21 +1156,6 @@ export default function HRDashboardPage() {
               )}
 
               <div className="space-y-4 text-xs sm:text-sm text-slate-700 mb-6">
-                <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="text-xs font-semibold text-slate-500 block">Total Evaluations</span>
-                    <span className="font-extrabold text-slate-900 text-lg tabular-nums">842</span>
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-500 block">Campus Turnout</span>
-                    <span className="font-extrabold text-[#0B2545] text-lg tabular-nums">85.9%</span>
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-500 block">Institutional Mean</span>
-                    <span className="font-extrabold text-[#0B2545] text-lg tabular-nums">4.64 / 5.00</span>
-                  </div>
-                </div>
-
                 <div className="overflow-x-auto max-h-56 border border-slate-200 rounded-xl">
                   <table className="w-full text-left text-xs sm:text-sm">
                     <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-bold">
@@ -1340,14 +1168,14 @@ export default function HRDashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {DEPARTMENT_METRICS.map((d) => (
+                      {departmentMetrics.map((d) => (
                         <tr key={d.code} className="hover:bg-slate-50">
                           <td className="p-3 font-bold text-slate-900">{d.name}</td>
                           <td className="p-3 text-right tabular-nums">{d.facultyCount}</td>
                           <td className="p-3 text-right tabular-nums">{d.totalResponses}</td>
                           <td className="p-3 text-right tabular-nums">{d.completion}%</td>
                           <td className="p-3 text-right font-extrabold text-[#0B2545] tabular-nums">
-                            {d.avgRating.toFixed(2)}
+                            {Number(d.avgRating || 0).toFixed(2)}
                           </td>
                         </tr>
                       ))}

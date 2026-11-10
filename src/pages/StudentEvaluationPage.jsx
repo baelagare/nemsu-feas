@@ -223,10 +223,6 @@ export default function StudentEvaluationPage() {
                   Student Evaluation of Teachers (SET)
                 </h1>
               </div>
-
-              <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
-                [PLACEHOLDER: AY / Semester]
-              </span>
             </div>
 
             {/* Progress Bar */}
