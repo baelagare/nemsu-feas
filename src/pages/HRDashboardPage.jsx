@@ -17,6 +17,12 @@ import {
   ArrowUpDown,
   Eye,
   Printer,
+  Plus,
+  Edit2,
+  Trash2,
+  AlertCircle,
+  RefreshCw,
+  Layers,
 } from 'lucide-react';
 import UniversitySeal from '../components/UniversitySeal';
 import Footer from '../components/Footer';
@@ -26,28 +32,87 @@ import {
   fetchDepartmentMetrics,
   fetchFacultyRoster,
   fetchFeedbackFeed,
+  fetchAdminRubric,
+  createFaculty,
+  updateFaculty,
+  deleteFaculty,
+  createRubricSection,
+  updateRubricSection,
+  deleteRubricSection,
+  createRubricCriterion,
+  updateRubricCriterion,
+  deleteRubricCriterion,
 } from '../services/api';
 
 /**
  * HR & Academic Deans Administrative Analytics Portal.
  * Strictly Navy Blue (#0B2545) & White institutional design system,
  * Plus Jakarta Sans tabular typography, and complete interactive functionality
- * across all 4 tabs (System Overview, Department Matrix, Faculty Roster, Qualitative Feedback).
+ * across all 5 tabs (System Overview, Department Matrix, Faculty Roster, Qualitative Feedback, Rubric Customizer).
  */
 
 export default function HRDashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const isHrAdmin = user?.role === 'hr_admin';
 
   // Live Data State
   const [overview, setOverview] = useState(null);
   const [departmentMetrics, setDepartmentMetrics] = useState([]);
   const [facultyRoster, setFacultyRoster] = useState([]);
   const [feedbackItems, setFeedbackItems] = useState([]);
+  const [rubricSections, setRubricSections] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
+  // CRUD Banner / Toast Notification
+  const [crudNotification, setCrudNotification] = useState(null);
+
+  // Faculty CRUD State
+  const [showFacultyModal, setShowFacultyModal] = useState(false);
+  const [editingFaculty, setEditingFaculty] = useState(null);
+  const [facultyForm, setFacultyForm] = useState({
+    name: '',
+    email: '',
+    department_id: '',
+    employment_status: 'permanent',
+    is_active: true,
+  });
+  const [facultyFormError, setFacultyFormError] = useState('');
+  const [isSubmittingFaculty, setIsSubmittingFaculty] = useState(false);
+  const [facultyToDelete, setFacultyToDelete] = useState(null);
+  const [isDeletingFaculty, setIsDeletingFaculty] = useState(false);
+
+  // Rubric Section CRUD State
+  const [showSectionModal, setShowSectionModal] = useState(false);
+  const [editingSection, setEditingSection] = useState(null);
+  const [sectionForm, setSectionForm] = useState({
+    code: '',
+    title: '',
+    description: '',
+    display_order: 1,
+  });
+  const [sectionFormError, setSectionFormError] = useState('');
+  const [isSubmittingSection, setIsSubmittingSection] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState(null);
+  const [isDeletingSection, setIsDeletingSection] = useState(false);
+
+  // Rubric Criterion CRUD State
+  const [showCriterionModal, setShowCriterionModal] = useState(false);
+  const [editingCriterion, setEditingCriterion] = useState(null);
+  const [criterionForm, setCriterionForm] = useState({
+    section_id: '',
+    item_code: '',
+    criterion_text: '',
+    display_order: 1,
+    is_active: true,
+  });
+  const [criterionFormError, setCriterionFormError] = useState('');
+  const [isSubmittingCriterion, setIsSubmittingCriterion] = useState(false);
+  const [criterionToDelete, setCriterionToDelete] = useState(null);
+  const [isDeletingCriterion, setIsDeletingCriterion] = useState(false);
+
   // Navigation & Interactive Filter State
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'departments' | 'faculty' | 'sentiment'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'departments' | 'faculty' | 'sentiment' | 'rubric'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
@@ -99,8 +164,10 @@ export default function HRDashboardPage() {
               id: f.id,
               name: f.name,
               email: f.email,
+              departmentId: f.department_id,
               dept: f.department_code,
               deptName: f.department_name,
+              employmentStatus: f.employment_status || 'permanent',
               courses: f.courses || 'Assigned Courses',
               responses: f.evaluations_count,
               rating: f.composite_mean,
@@ -115,6 +182,13 @@ export default function HRDashboardPage() {
         if (feedRes?.data) {
           setFeedbackItems(feedRes.data);
         }
+
+        if (isHrAdmin) {
+          const rubricRes = await fetchAdminRubric().catch(() => null);
+          if (isMounted && rubricRes?.data) {
+            setRubricSections(rubricRes.data);
+          }
+        }
       } catch (err) {
         console.error('Failed to load analytics dashboard data:', err);
       } finally {
@@ -126,11 +200,352 @@ export default function HRDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isHrAdmin]);
 
   const handleLogout = () => {
     logout();
     navigate('/hr/login');
+  };
+
+  // Helper re-fetch functions
+  const refreshFacultyData = async () => {
+    try {
+      const [facRes, deptRes, overviewRes] = await Promise.all([
+        fetchFacultyRoster(),
+        fetchDepartmentMetrics(),
+        fetchAnalyticsOverview(),
+      ]);
+      if (facRes?.data) {
+        setFacultyRoster(
+          facRes.data.map((f) => ({
+            id: f.id,
+            name: f.name,
+            email: f.email,
+            departmentId: f.department_id,
+            dept: f.department_code,
+            deptName: f.department_name,
+            employmentStatus: f.employment_status || 'permanent',
+            courses: f.courses || 'Assigned Courses',
+            responses: f.evaluations_count,
+            rating: f.composite_mean,
+            sectionA: f.section_a_mean,
+            sectionB: f.section_b_mean,
+            sectionC: f.section_c_mean,
+            status: f.descriptive_rating,
+          }))
+        );
+      }
+      if (deptRes?.data) {
+        setDepartmentMetrics(
+          deptRes.data.map((d) => ({
+            id: d.id,
+            code: d.code,
+            name: d.name,
+            deanName: d.dean_name,
+            facultyCount: d.faculty_count,
+            totalResponses: d.evaluations_count,
+            targetResponses: d.target_evaluations,
+            completion: d.completion_rate,
+            avgRating: d.average_rating,
+            status: d.descriptive_rating,
+          }))
+        );
+      }
+      if (overviewRes?.data) setOverview(overviewRes.data);
+    } catch (err) {
+      console.error('Failed to reload faculty data:', err);
+    }
+  };
+
+  const refreshRubricData = async () => {
+    try {
+      const res = await fetchAdminRubric();
+      if (res?.data) {
+        setRubricSections(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to reload rubric:', err);
+    }
+  };
+
+  // Faculty CRUD Handlers
+  const handleOpenAddFaculty = () => {
+    setEditingFaculty(null);
+    setFacultyForm({
+      name: '',
+      email: '',
+      department_id: departmentMetrics[0]?.id || '',
+      employment_status: 'permanent',
+      is_active: true,
+    });
+    setFacultyFormError('');
+    setShowFacultyModal(true);
+  };
+
+  const handleOpenEditFaculty = (fac) => {
+    setEditingFaculty(fac);
+    setFacultyForm({
+      name: fac.name || '',
+      email: fac.email || '',
+      department_id: fac.departmentId || departmentMetrics.find(d => d.code === fac.dept)?.id || '',
+      employment_status: fac.employmentStatus || 'permanent',
+      is_active: true,
+    });
+    setFacultyFormError('');
+    setShowFacultyModal(true);
+  };
+
+  const handleSaveFaculty = async (e) => {
+    e.preventDefault();
+    if (!facultyForm.name.trim()) {
+      setFacultyFormError('Faculty member name is required.');
+      return;
+    }
+    if (!facultyForm.department_id) {
+      setFacultyFormError('Please select an academic department.');
+      return;
+    }
+
+    try {
+      setIsSubmittingFaculty(true);
+      setFacultyFormError('');
+
+      const payload = {
+        name: facultyForm.name.trim(),
+        email: facultyForm.email.trim() || null,
+        department_id: Number(facultyForm.department_id),
+        employment_status: facultyForm.employment_status,
+        is_active: Boolean(facultyForm.is_active),
+      };
+
+      if (editingFaculty) {
+        await updateFaculty(editingFaculty.id, payload);
+        setCrudNotification({
+          type: 'success',
+          message: `Faculty member "${payload.name}" updated successfully.`,
+        });
+      } else {
+        await createFaculty(payload);
+        setCrudNotification({
+          type: 'success',
+          message: `Faculty member "${payload.name}" added to roster successfully.`,
+        });
+      }
+
+      setShowFacultyModal(false);
+      await refreshFacultyData();
+    } catch (err) {
+      setFacultyFormError(err.message || 'Failed to save faculty record.');
+    } finally {
+      setIsSubmittingFaculty(false);
+    }
+  };
+
+  const handleConfirmDeleteFaculty = async () => {
+    if (!facultyToDelete) return;
+    try {
+      setIsDeletingFaculty(true);
+      const res = await deleteFaculty(facultyToDelete.id);
+      setCrudNotification({
+        type: res?.deactivated ? 'warning' : 'success',
+        message: res?.message || `Faculty member "${facultyToDelete.name}" removed successfully.`,
+      });
+      setFacultyToDelete(null);
+      await refreshFacultyData();
+    } catch (err) {
+      setCrudNotification({
+        type: 'error',
+        message: err.message || 'Failed to delete faculty member.',
+      });
+    } finally {
+      setIsDeletingFaculty(false);
+    }
+  };
+
+  // Section CRUD Handlers
+  const handleOpenAddSection = () => {
+    setEditingSection(null);
+    setSectionForm({
+      code: '',
+      title: '',
+      description: '',
+      display_order: rubricSections.length + 1,
+    });
+    setSectionFormError('');
+    setShowSectionModal(true);
+  };
+
+  const handleOpenEditSection = (sec) => {
+    setEditingSection(sec);
+    setSectionForm({
+      code: sec.code || '',
+      title: sec.title || '',
+      description: sec.description || '',
+      display_order: sec.display_order || 1,
+    });
+    setSectionFormError('');
+    setShowSectionModal(true);
+  };
+
+  const handleSaveSection = async (e) => {
+    e.preventDefault();
+    if (!sectionForm.code.trim()) {
+      setSectionFormError('Section code is required (e.g. D).');
+      return;
+    }
+    if (!sectionForm.title.trim()) {
+      setSectionFormError('Section title is required.');
+      return;
+    }
+
+    try {
+      setIsSubmittingSection(true);
+      setSectionFormError('');
+
+      const payload = {
+        code: sectionForm.code.trim().toUpperCase(),
+        title: sectionForm.title.trim(),
+        description: sectionForm.description.trim() || null,
+        display_order: Number(sectionForm.display_order) || 1,
+      };
+
+      if (editingSection) {
+        await updateRubricSection(editingSection.id, payload);
+        setCrudNotification({
+          type: 'success',
+          message: `Evaluation section "${payload.code}" updated successfully.`,
+        });
+      } else {
+        await createRubricSection(payload);
+        setCrudNotification({
+          type: 'success',
+          message: `Evaluation section "${payload.code}" created successfully.`,
+        });
+      }
+
+      setShowSectionModal(false);
+      await refreshRubricData();
+    } catch (err) {
+      setSectionFormError(err.message || 'Failed to save rubric section.');
+    } finally {
+      setIsSubmittingSection(false);
+    }
+  };
+
+  const handleConfirmDeleteSection = async () => {
+    if (!sectionToDelete) return;
+    try {
+      setIsDeletingSection(true);
+      const res = await deleteRubricSection(sectionToDelete.id);
+      setCrudNotification({
+        type: 'success',
+        message: res?.message || `Section "${sectionToDelete.code}" deleted successfully.`,
+      });
+      setSectionToDelete(null);
+      await refreshRubricData();
+    } catch (err) {
+      setCrudNotification({
+        type: 'error',
+        message: err.message || 'Failed to delete section.',
+      });
+    } finally {
+      setIsDeletingSection(false);
+    }
+  };
+
+  // Criterion CRUD Handlers
+  const handleOpenAddCriterion = (sec) => {
+    setEditingCriterion(null);
+    const count = (sec.criteria?.length || 0) + 1;
+    setCriterionForm({
+      section_id: sec.id,
+      item_code: `${sec.code.toLowerCase()}${count}`,
+      criterion_text: '',
+      display_order: count,
+      is_active: true,
+    });
+    setCriterionFormError('');
+    setShowCriterionModal(true);
+  };
+
+  const handleOpenEditCriterion = (sec, crit) => {
+    setEditingCriterion(crit);
+    setCriterionForm({
+      section_id: sec.id,
+      item_code: crit.item_code || '',
+      criterion_text: crit.criterion_text || '',
+      display_order: crit.display_order || 1,
+      is_active: crit.is_active !== undefined ? Boolean(crit.is_active) : true,
+    });
+    setCriterionFormError('');
+    setShowCriterionModal(true);
+  };
+
+  const handleSaveCriterion = async (e) => {
+    e.preventDefault();
+    if (!criterionForm.item_code.trim()) {
+      setCriterionFormError('Item code is required (e.g. a7).');
+      return;
+    }
+    if (!criterionForm.criterion_text.trim()) {
+      setCriterionFormError('Question/criterion text is required.');
+      return;
+    }
+
+    try {
+      setIsSubmittingCriterion(true);
+      setCriterionFormError('');
+
+      const payload = {
+        section_id: Number(criterionForm.section_id),
+        item_code: criterionForm.item_code.trim().toLowerCase(),
+        criterion_text: criterionForm.criterion_text.trim(),
+        display_order: Number(criterionForm.display_order) || 1,
+        is_active: Boolean(criterionForm.is_active),
+      };
+
+      if (editingCriterion) {
+        await updateRubricCriterion(editingCriterion.id, payload);
+        setCrudNotification({
+          type: 'success',
+          message: `Evaluation question "${payload.item_code}" updated successfully.`,
+        });
+      } else {
+        await createRubricCriterion(payload);
+        setCrudNotification({
+          type: 'success',
+          message: `Evaluation question "${payload.item_code}" added successfully.`,
+        });
+      }
+
+      setShowCriterionModal(false);
+      await refreshRubricData();
+    } catch (err) {
+      setCriterionFormError(err.message || 'Failed to save evaluation question.');
+    } finally {
+      setIsSubmittingCriterion(false);
+    }
+  };
+
+  const handleConfirmDeleteCriterion = async () => {
+    if (!criterionToDelete) return;
+    try {
+      setIsDeletingCriterion(true);
+      const res = await deleteRubricCriterion(criterionToDelete.id);
+      setCrudNotification({
+        type: res?.deactivated ? 'warning' : 'success',
+        message: res?.message || `Criterion "${criterionToDelete.item_code}" removed.`,
+      });
+      setCriterionToDelete(null);
+      await refreshRubricData();
+    } catch (err) {
+      setCrudNotification({
+        type: 'error',
+        message: err.message || 'Failed to delete criterion.',
+      });
+    } finally {
+      setIsDeletingCriterion(false);
+    }
   };
 
   // Jump to Faculty Roster filtered by a specific department
@@ -273,6 +688,9 @@ export default function HRDashboardPage() {
                 { id: 'departments', label: 'Department Matrix', count: departmentMetrics.length },
                 { id: 'faculty', label: 'Faculty Roster', count: facultyRoster.length },
                 { id: 'sentiment', label: 'Qualitative Feedback', count: feedbackItems.length },
+                ...(isHrAdmin
+                  ? [{ id: 'rubric', label: 'Evaluation Form (Rubric)', count: rubricSections.length }]
+                  : []),
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -310,6 +728,38 @@ export default function HRDashboardPage() {
 
       {/* MAIN WORKSPACE */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+        {/* CRUD Notification Toast / Alert Banner */}
+        {crudNotification && (
+          <div
+            className={`rounded-xl p-4 flex items-center justify-between gap-3 border shadow-subtle ${
+              crudNotification.type === 'error'
+                ? 'bg-red-50 border-red-200 text-red-800'
+                : crudNotification.type === 'warning'
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {crudNotification.type === 'error' ? (
+                <AlertCircle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+              ) : crudNotification.type === 'warning' ? (
+                <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
+              )}
+              <span className="text-xs sm:text-sm font-semibold">{crudNotification.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCrudNotification(null)}
+              className="p-1 rounded-md hover:bg-black/5 text-current"
+              aria-label="Dismiss notification"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* GLOBAL FILTER & ACTION TOOLBAR */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-xl bg-white p-4 sm:p-5 border border-slate-200 shadow-card">
           <div className="flex flex-wrap items-center gap-3">
@@ -319,6 +769,7 @@ export default function HRDashboardPage() {
                 {activeTab === 'departments' && 'Academic Department Performance Matrix'}
                 {activeTab === 'faculty' && 'Complete Faculty Evaluation Roster'}
                 {activeTab === 'sentiment' && 'Anonymized Student Feedback & Themes'}
+                {activeTab === 'rubric' && 'Official Evaluation Form (SET Questionnaire Rubric)'}
               </h2>
             </div>
           </div>
@@ -814,8 +1265,19 @@ export default function HRDashboardPage() {
                   </p>
                 </div>
 
-                {/* Rating Status Filter & Sort Order */}
+                {/* Rating Status Filter, Sort Order & Add Faculty Action */}
                 <div className="flex flex-wrap items-center gap-2.5">
+                  {isHrAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleOpenAddFaculty}
+                      className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-lg bg-[#0B2545] text-white text-xs sm:text-sm font-bold hover:bg-[#133C6E] transition-colors shadow-sm"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      <span>Add Faculty</span>
+                    </button>
+                  )}
+
                   <select
                     value={selectedStatusFilter}
                     onChange={(e) => setSelectedStatusFilter(e.target.value)}
@@ -854,7 +1316,7 @@ export default function HRDashboardPage() {
                       <th className="py-3.5 px-3 text-right font-bold">Sec B</th>
                       <th className="py-3.5 px-3 text-right font-bold">Sec C</th>
                       <th className="py-3.5 px-4 text-right font-bold">Composite</th>
-                      <th className="py-3.5 px-5 text-right font-bold">Details</th>
+                      <th className="py-3.5 px-5 text-right font-bold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -880,7 +1342,7 @@ export default function HRDashboardPage() {
                         >
                           <td className="py-4 px-5">
                             <div className="font-bold text-slate-900">{fac.name}</div>
-                            <div className="text-xs text-slate-500 mt-0.5">{fac.status}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">{fac.status} &bull; <span className="capitalize">{fac.employmentStatus}</span></div>
                           </td>
                           <td className="py-4 px-3">
                             <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-[#0B2545] border border-slate-200">
@@ -907,18 +1369,49 @@ export default function HRDashboardPage() {
                               {Number(fac.rating || 0).toFixed(2)}
                             </span>
                           </td>
-                          <td className="py-4 px-5 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFacultyDetail(fac);
-                              }}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-[#0B2545] hover:border-[#0B2545] hover:bg-slate-50 transition-colors whitespace-nowrap"
-                            >
-                              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                              <span>Inspect Report</span>
-                            </button>
+                          <td className="py-4 px-5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFacultyDetail(fac);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-[#0B2545] hover:border-[#0B2545] hover:bg-slate-50 transition-colors"
+                                title="Inspect Analytics Report"
+                              >
+                                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span className="hidden xl:inline">Inspect</span>
+                              </button>
+                              {isHrAdmin && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditFaculty(fac);
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:border-[#0B2545] hover:text-[#0B2545] hover:bg-slate-50 transition-colors"
+                                    title="Edit Faculty Member"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                    <span className="hidden xl:inline">Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setFacultyToDelete(fac);
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-bold text-red-600 hover:border-red-400 hover:bg-red-50 transition-colors"
+                                    title="Delete or Deactivate Faculty"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                    <span className="hidden xl:inline">Delete</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1007,6 +1500,149 @@ export default function HRDashboardPage() {
                 ))
               )}
             </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            TAB 5: EVALUATION FORM (RUBRIC & QUESTIONNAIRE INSTRUMENT)
+        =================================================================== */}
+        {activeTab === 'rubric' && isHrAdmin && (
+          <div className="flex flex-col gap-6">
+            {/* Rubric Tab Header */}
+            <div className="rounded-xl bg-white p-5 sm:p-6 border border-slate-200 shadow-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#0B2545] block mb-1">
+                  SET Evaluation Instrument Customizer
+                </span>
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900">
+                  Official Questionnaire Sections &amp; Criteria
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                  Configure evaluation sections, performance domains, and individual criteria questions. Changes immediately reflect in active student evaluations.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenAddSection}
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-[#0B2545] text-white text-xs sm:text-sm font-bold hover:bg-[#133C6E] transition-colors self-start sm:self-auto shrink-0 shadow-sm"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>Add Section</span>
+              </button>
+            </div>
+
+            {/* Section Cards */}
+            {rubricSections.length === 0 ? (
+              <div className="rounded-xl bg-white p-12 text-center border border-slate-200 shadow-card text-slate-500">
+                No evaluation sections configured. Click &ldquo;Add Section&rdquo; to create one.
+              </div>
+            ) : (
+              rubricSections.map((sec) => (
+                <div key={sec.id} className="rounded-xl bg-white border border-slate-200 shadow-card overflow-hidden">
+                  {/* Section Header */}
+                  <div className="p-5 sm:p-6 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0B2545] text-white font-extrabold text-sm">
+                        {sec.code}
+                      </span>
+                      <div>
+                        <h4 className="text-base sm:text-lg font-extrabold text-slate-900">
+                          {sec.title}
+                        </h4>
+                        {sec.description && (
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {sec.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddCriterion(sec)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#0B2545] text-[#0B2545] text-xs font-bold hover:bg-[#0B2545] hover:text-white transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Add Question</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditSection(sec)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:border-[#0B2545] hover:text-[#0B2545] transition-colors"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSectionToDelete(sec)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50 hover:border-red-400 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Criteria / Questions List in Section */}
+                  <div className="p-5 sm:p-6">
+                    {!sec.criteria || sec.criteria.length === 0 ? (
+                      <div className="text-center py-6 text-xs text-slate-400 italic border border-dashed border-slate-200 rounded-lg">
+                        No criteria questions yet in this section. Click &ldquo;Add Question&rdquo; to add one.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {sec.criteria.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-slate-200 hover:border-slate-300 bg-white transition-colors"
+                          >
+                            <div className="flex items-start gap-3 min-w-0">
+                              <span className="inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-extrabold uppercase bg-slate-100 text-[#0B2545] border border-slate-200 shrink-0">
+                                {item.item_code}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-slate-800 leading-snug">
+                                  {item.criterion_text}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                                  <span>Order: {item.display_order}</span>
+                                  <span>&bull;</span>
+                                  <span className={item.is_active ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                                    {item.is_active ? 'Active' : 'Archived / Inactive'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditCriterion(sec, item)}
+                                className="p-1.5 rounded-md text-slate-500 hover:text-[#0B2545] hover:bg-slate-100 transition-colors"
+                                title="Edit question text and order"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCriterionToDelete(item)}
+                                className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete or deactivate question"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -1211,6 +1847,571 @@ export default function HRDashboardPage() {
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />
                   <span>Download Full Roster CSV</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            MODAL 3: ADD / EDIT FACULTY MEMBER
+        =================================================================== */}
+        {showFacultyModal && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="faculty-modal-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60"
+          >
+            <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-elevated border border-slate-200">
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0B2545] text-white">
+                    <Users className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 id="faculty-modal-title" className="text-base sm:text-lg font-extrabold text-slate-900">
+                      {editingFaculty ? 'Edit Faculty Member' : 'Add New Faculty Member'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      NEMSU Institutional Teaching Directory
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFacultyModal(false)}
+                  className="rounded-lg p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {facultyFormError && (
+                <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs sm:text-sm font-semibold text-red-700 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{facultyFormError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveFaculty} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={facultyForm.name}
+                    onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
+                    placeholder="e.g. Engr. Maria Santos, MSIT"
+                    className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Institutional Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={facultyForm.email}
+                    onChange={(e) => setFacultyForm({ ...facultyForm, email: e.target.value })}
+                    placeholder="e.g. msantos@nemsu.edu.ph"
+                    className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  />
+                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                    Optional. Used for automated score summary dispatch.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Academic Department <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={facultyForm.department_id}
+                    onChange={(e) => setFacultyForm({ ...facultyForm, department_id: e.target.value })}
+                    className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm font-medium focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  >
+                    <option value="">Select Department...</option>
+                    {departmentMetrics.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.code} &ndash; {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Employment Status <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={facultyForm.employment_status}
+                    onChange={(e) => setFacultyForm({ ...facultyForm, employment_status: e.target.value })}
+                    className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm font-medium focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  >
+                    <option value="permanent">Permanent / Regular Faculty</option>
+                    <option value="contractual">Contractual / Temporary</option>
+                    <option value="part-time">Part-Time / Adjunct</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="faculty-active-toggle"
+                    checked={facultyForm.is_active}
+                    onChange={(e) => setFacultyForm({ ...facultyForm, is_active: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300 text-[#0B2545] focus:ring-[#0B2545]"
+                  />
+                  <label htmlFor="faculty-active-toggle" className="text-xs font-semibold text-slate-700">
+                    Active in Current Student Evaluation Roster
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowFacultyModal(false)}
+                    className="h-11 px-4 rounded-lg border border-slate-300 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingFaculty}
+                    className="h-11 px-5 rounded-lg bg-[#0B2545] hover:bg-[#133C6E] text-xs sm:text-sm font-bold text-white transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {isSubmittingFaculty && <RefreshCw className="h-4 w-4 animate-spin" />}
+                    <span>{editingFaculty ? 'Save Changes' : 'Create Faculty'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            MODAL 4: CONFIRM DELETE FACULTY
+        =================================================================== */}
+        {facultyToDelete && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-faculty-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60"
+          >
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-elevated border border-slate-200">
+              <div className="flex items-center gap-3.5 pb-4 mb-4 border-b border-slate-200">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+                  <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 id="delete-faculty-title" className="text-base font-extrabold text-slate-900">
+                    Remove Faculty Member
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {facultyToDelete.name} ({facultyToDelete.dept})
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+                Are you sure you want to remove <strong className="text-slate-900">{facultyToDelete.name}</strong>?
+                <br /><br />
+                <span className="text-slate-500">
+                  Note: If this instructor already has recorded student evaluations, their record will be safely deactivated/archived to protect institutional historical rating integrity.
+                </span>
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setFacultyToDelete(null)}
+                  className="h-10 px-4 rounded-lg border border-slate-300 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteFaculty}
+                  disabled={isDeletingFaculty}
+                  className="h-10 px-5 rounded-lg bg-red-600 hover:bg-red-700 text-xs sm:text-sm font-bold text-white transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  {isDeletingFaculty && <RefreshCw className="h-4 w-4 animate-spin" />}
+                  <span>Confirm Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            MODAL 5: ADD / EDIT RUBRIC SECTION
+        =================================================================== */}
+        {showSectionModal && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="section-modal-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60"
+          >
+            <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-elevated border border-slate-200">
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0B2545] text-white">
+                    <Layers className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 id="section-modal-title" className="text-base sm:text-lg font-extrabold text-slate-900">
+                      {editingSection ? 'Edit Evaluation Section' : 'Add Evaluation Section'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      SET Questionnaire Domain Heading
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSectionModal(false)}
+                  className="rounded-lg p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {sectionFormError && (
+                <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs sm:text-sm font-semibold text-red-700 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{sectionFormError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSection} className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={10}
+                      value={sectionForm.code}
+                      onChange={(e) => setSectionForm({ ...sectionForm, code: e.target.value.toUpperCase() })}
+                      placeholder="e.g. D"
+                      className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm font-bold uppercase focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Display Order
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={sectionForm.display_order}
+                      onChange={(e) => setSectionForm({ ...sectionForm, display_order: e.target.value })}
+                      className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Section Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={sectionForm.title}
+                    onChange={(e) => setSectionForm({ ...sectionForm, title: e.target.value })}
+                    placeholder="e.g. Professionalism and Community Outreach"
+                    className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Description / Instructions
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={sectionForm.description}
+                    onChange={(e) => setSectionForm({ ...sectionForm, description: e.target.value })}
+                    placeholder="Instructions presented to student evaluators for this domain..."
+                    className="w-full p-3 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowSectionModal(false)}
+                    className="h-11 px-4 rounded-lg border border-slate-300 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingSection}
+                    className="h-11 px-5 rounded-lg bg-[#0B2545] hover:bg-[#133C6E] text-xs sm:text-sm font-bold text-white transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {isSubmittingSection && <RefreshCw className="h-4 w-4 animate-spin" />}
+                    <span>{editingSection ? 'Save Section' : 'Create Section'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            MODAL 6: CONFIRM DELETE RUBRIC SECTION
+        =================================================================== */}
+        {sectionToDelete && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-section-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60"
+          >
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-elevated border border-slate-200">
+              <div className="flex items-center gap-3.5 pb-4 mb-4 border-b border-slate-200">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+                  <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 id="delete-section-title" className="text-base font-extrabold text-slate-900">
+                    Delete Evaluation Section
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Section {sectionToDelete.code} &ndash; {sectionToDelete.title}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+                Are you sure you want to delete this section? Deleting this section will also remove all its criteria questions.
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setSectionToDelete(null)}
+                  className="h-10 px-4 rounded-lg border border-slate-300 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteSection}
+                  disabled={isDeletingSection}
+                  className="h-10 px-5 rounded-lg bg-red-600 hover:bg-red-700 text-xs sm:text-sm font-bold text-white transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  {isDeletingSection && <RefreshCw className="h-4 w-4 animate-spin" />}
+                  <span>Delete Section</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            MODAL 7: ADD / EDIT EVALUATION CRITERION QUESTION
+        =================================================================== */}
+        {showCriterionModal && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="criterion-modal-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60"
+          >
+            <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-elevated border border-slate-200">
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0B2545] text-white">
+                    <FileText className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 id="criterion-modal-title" className="text-base sm:text-lg font-extrabold text-slate-900">
+                      {editingCriterion ? 'Edit Evaluation Question' : 'Add Evaluation Question'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Individual Rubric Rating Statement
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCriterionModal(false)}
+                  className="rounded-lg p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {criterionFormError && (
+                <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-xs sm:text-sm font-semibold text-red-700 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{criterionFormError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveCriterion} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Evaluation Section <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={criterionForm.section_id}
+                    onChange={(e) => setCriterionForm({ ...criterionForm, section_id: e.target.value })}
+                    className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm font-medium focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  >
+                    <option value="">Select Section...</option>
+                    {rubricSections.map((sec) => (
+                      <option key={sec.id} value={sec.id}>
+                        Section {sec.code} &ndash; {sec.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Item Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={criterionForm.item_code}
+                      onChange={(e) => setCriterionForm({ ...criterionForm, item_code: e.target.value.toLowerCase() })}
+                      placeholder="e.g. a7, d1"
+                      className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm lowercase focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Display Order
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={criterionForm.display_order}
+                      onChange={(e) => setCriterionForm({ ...criterionForm, display_order: e.target.value })}
+                      className="w-full h-11 px-3.5 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Question Statement / Criterion Text <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={criterionForm.criterion_text}
+                    onChange={(e) => setCriterionForm({ ...criterionForm, criterion_text: e.target.value })}
+                    placeholder="Enter the specific teaching competency or criterion students will rate from 1 to 5..."
+                    className="w-full p-3 rounded-lg border border-slate-300 text-sm focus:border-[#0B2545] focus:outline-none focus:ring-1 focus:ring-[#0B2545]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="criterion-active-toggle"
+                    checked={criterionForm.is_active}
+                    onChange={(e) => setCriterionForm({ ...criterionForm, is_active: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300 text-[#0B2545] focus:ring-[#0B2545]"
+                  />
+                  <label htmlFor="criterion-active-toggle" className="text-xs font-semibold text-slate-700">
+                    Active (Include in student evaluation form)
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowCriterionModal(false)}
+                    className="h-11 px-4 rounded-lg border border-slate-300 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingCriterion}
+                    className="h-11 px-5 rounded-lg bg-[#0B2545] hover:bg-[#133C6E] text-xs sm:text-sm font-bold text-white transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {isSubmittingCriterion && <RefreshCw className="h-4 w-4 animate-spin" />}
+                    <span>{editingCriterion ? 'Save Question' : 'Add Question'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            MODAL 8: CONFIRM DELETE CRITERION
+        =================================================================== */}
+        {criterionToDelete && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-criterion-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60"
+          >
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-elevated border border-slate-200">
+              <div className="flex items-center gap-3.5 pb-4 mb-4 border-b border-slate-200">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+                  <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 id="delete-criterion-title" className="text-base font-extrabold text-slate-900">
+                    Remove Evaluation Question
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Item Code: {criterionToDelete.item_code}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-4">
+                Are you sure you want to remove this question?
+                <br /><br />
+                <span className="italic text-slate-800">&ldquo;{criterionToDelete.criterion_text}&rdquo;</span>
+                <br /><br />
+                <span className="text-slate-500">
+                  Note: If student ratings already reference this question, it will be safely deactivated/archived to preserve evaluation records.
+                </span>
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setCriterionToDelete(null)}
+                  className="h-10 px-4 rounded-lg border border-slate-300 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteCriterion}
+                  disabled={isDeletingCriterion}
+                  className="h-10 px-5 rounded-lg bg-red-600 hover:bg-red-700 text-xs sm:text-sm font-bold text-white transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  {isDeletingCriterion && <RefreshCw className="h-4 w-4 animate-spin" />}
+                  <span>Confirm Delete</span>
                 </button>
               </div>
             </div>

@@ -141,3 +141,72 @@ export async function submitStudentEvaluation(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Admin Management API (HR Administrator)
+// ---------------------------------------------------------------------------
+
+export async function createFaculty(data) {
+  return apiFetch('/admin/faculty', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFaculty(id, data) {
+  return apiFetch(`/admin/faculty/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFaculty(id) {
+  return apiFetch(`/admin/faculty/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchAdminRubric() {
+  return apiFetch('/admin/rubric');
+}
+
+export async function createRubricSection(data) {
+  return apiFetch('/admin/rubric/sections', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRubricSection(id, data) {
+  return apiFetch(`/admin/rubric/sections/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRubricSection(id) {
+  return apiFetch(`/admin/rubric/sections/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function createRubricCriterion(data) {
+  return apiFetch('/admin/rubric/criteria', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRubricCriterion(id, data) {
+  return apiFetch(`/admin/rubric/criteria/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRubricCriterion(id) {
+  return apiFetch(`/admin/rubric/criteria/${id}`, {
+    method: 'DELETE',
+  });
+}
+

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AcademicPeriodController;
+use App\Http\Controllers\Api\V1\Admin\AdminFacultyController;
+use App\Http\Controllers\Api\V1\Admin\AdminRubricController;
 use App\Http\Controllers\Api\V1\AnalyticsDepartmentController;
 use App\Http\Controllers\Api\V1\AnalyticsFacultyController;
 use App\Http\Controllers\Api\V1\AnalyticsFeedbackController;
@@ -68,6 +70,24 @@ Route::prefix('v1')->group(function () {
         Route::prefix('reports')->group(function () {
             Route::get('/export', ReportExportController::class);
         });
+    });
+
+    // HR Administrative Management (Faculty & Evaluation Instrument CRUD)
+    Route::middleware(['auth:sanctum', 'role:hr_admin'])->prefix('admin')->group(function () {
+        // Faculty Management
+        Route::post('/faculty', [AdminFacultyController::class, 'store']);
+        Route::put('/faculty/{faculty}', [AdminFacultyController::class, 'update']);
+        Route::delete('/faculty/{faculty}', [AdminFacultyController::class, 'destroy']);
+
+        // Evaluation Form Rubric Management (Sections & Criteria/Questions)
+        Route::get('/rubric', [AdminRubricController::class, 'index']);
+        Route::post('/rubric/sections', [AdminRubricController::class, 'storeSection']);
+        Route::put('/rubric/sections/{section}', [AdminRubricController::class, 'updateSection']);
+        Route::delete('/rubric/sections/{section}', [AdminRubricController::class, 'destroySection']);
+
+        Route::post('/rubric/criteria', [AdminRubricController::class, 'storeCriterion']);
+        Route::put('/rubric/criteria/{criterion}', [AdminRubricController::class, 'updateCriterion']);
+        Route::delete('/rubric/criteria/{criterion}', [AdminRubricController::class, 'destroyCriterion']);
     });
 
     // Test route for role-based access verification
