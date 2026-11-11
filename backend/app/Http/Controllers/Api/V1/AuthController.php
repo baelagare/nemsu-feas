@@ -57,22 +57,30 @@ class AuthController extends Controller
     }
 
     /**
-     * Verify student institutional email and issue evaluation session token.
+     * Verify student institutional email or anonymous session and issue evaluation session token.
      */
     public function studentSession(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'anonymous_id' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $email = strtolower(trim($validated['email']));
         $allowedDomain = config('services.google.allowed_domain', 'nemsu.edu.ph');
 
-        if (! str_ends_with($email, '@' . $allowedDomain)) {
-            return response()->json([
-                'success' => false,
-                'message' => "Access restricted. Only verified NEMSU institutional accounts (@{$allowedDomain}) are permitted.",
-            ], 403);
+        if (! empty($validated['email'])) {
+            $email = strtolower(trim($validated['email']));
+
+            if (! str_ends_with($email, '@' . $allowedDomain)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Access restricted. Only verified NEMSU institutional accounts (@{$allowedDomain}) are permitted.",
+                ], 403);
+            }
+        } else {
+            $seed = $validated['anonymous_id'] ?: ($request->ip() . '|' . $request->userAgent());
+            $hash = substr(hash('sha256', (string) $seed), 0, 12);
+            $email = "anon.{$hash}@{$allowedDomain}";
         }
 
         $user = User::firstOrCreate(

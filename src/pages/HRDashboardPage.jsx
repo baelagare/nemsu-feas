@@ -24,10 +24,12 @@ import {
   RefreshCw,
   Layers,
 } from 'lucide-react';
-import UniversitySeal from '../components/UniversitySeal';
+import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import {
+  API_BASE_URL,
+  TOKEN_STORAGE_KEY,
   fetchAnalyticsOverview,
   fetchDepartmentMetrics,
   fetchFacultyRoster,
@@ -43,6 +45,7 @@ import {
   updateRubricCriterion,
   deleteRubricCriterion,
 } from '../services/api';
+import { formatDepartmentName } from '../data/evaluationData';
 
 /**
  * HR & Academic Deans Administrative Analytics Portal.
@@ -146,13 +149,17 @@ export default function HRDashboardPage() {
             deptRes.data.map((d) => ({
               id: d.id,
               code: d.code,
-              name: d.name,
+              name: formatDepartmentName(d.name),
+              fullName: d.name,
               deanName: d.dean_name,
               facultyCount: d.faculty_count,
               totalResponses: d.evaluations_count,
               targetResponses: d.target_evaluations,
               completion: d.completion_rate,
               avgRating: d.average_rating,
+              sectionA: d.section_a_mean,
+              sectionB: d.section_b_mean,
+              sectionC: d.section_c_mean,
               status: d.descriptive_rating,
             }))
           );
@@ -166,7 +173,7 @@ export default function HRDashboardPage() {
               email: f.email,
               departmentId: f.department_id,
               dept: f.department_code,
-              deptName: f.department_name,
+              deptName: formatDepartmentName(f.department_name || ''),
               employmentStatus: f.employment_status || 'permanent',
               courses: f.courses || 'Assigned Courses',
               responses: f.evaluations_count,
@@ -175,6 +182,9 @@ export default function HRDashboardPage() {
               sectionB: f.section_b_mean,
               sectionC: f.section_c_mean,
               status: f.descriptive_rating,
+              sampleRemark:
+                f.sample_remark ||
+                'No written student remarks recorded yet for this instructor.',
             }))
           );
         }
@@ -223,7 +233,7 @@ export default function HRDashboardPage() {
             email: f.email,
             departmentId: f.department_id,
             dept: f.department_code,
-            deptName: f.department_name,
+            deptName: formatDepartmentName(f.department_name || ''),
             employmentStatus: f.employment_status || 'permanent',
             courses: f.courses || 'Assigned Courses',
             responses: f.evaluations_count,
@@ -232,6 +242,9 @@ export default function HRDashboardPage() {
             sectionB: f.section_b_mean,
             sectionC: f.section_c_mean,
             status: f.descriptive_rating,
+            sampleRemark:
+              f.sample_remark ||
+              'No written student remarks recorded yet for this instructor.',
           }))
         );
       }
@@ -240,13 +253,17 @@ export default function HRDashboardPage() {
           deptRes.data.map((d) => ({
             id: d.id,
             code: d.code,
-            name: d.name,
+            name: formatDepartmentName(d.name),
+            fullName: d.name,
             deanName: d.dean_name,
             facultyCount: d.faculty_count,
             totalResponses: d.evaluations_count,
             targetResponses: d.target_evaluations,
             completion: d.completion_rate,
             avgRating: d.average_rating,
+            sectionA: d.section_a_mean,
+            sectionB: d.section_b_mean,
+            sectionC: d.section_c_mean,
             status: d.descriptive_rating,
           }))
         );
@@ -606,8 +623,8 @@ export default function HRDashboardPage() {
   // Real CSV Export Handler from Backend API
   const handleDownloadCSV = async () => {
     try {
-      const token = localStorage.getItem('nemsu_auth_token');
-      const response = await fetch('http://127.0.0.1:8001/api/v1/reports/export', {
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      const response = await fetch(`${API_BASE_URL}/reports/export`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const blob = await response.blob();
@@ -638,100 +655,97 @@ export default function HRDashboardPage() {
     feedbackCategory !== 'ALL';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between text-slate-900">
-      {/* TOP INSTITUTIONAL BAR — Strict Navy Blue (#0B2545) & White */}
-      <header className="bg-[#0B2545] text-white sticky top-0 z-30 shadow-subtle">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 p-1 border border-white/20">
-              <UniversitySeal className="h-full w-full" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 block leading-none mb-1 truncate">
-                NEMSU &bull; Cantilan Campus
+    <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-between text-[#0B2545]">
+      {/* MINIMALIST TOP BAR */}
+      <Header
+        maxWidthClass="max-w-7xl"
+        subtitle="Staff Analytics \u00B7 FEAS"
+        rightContent={
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 border border-slate-200/80 shadow-subtle">
+              <span className="text-xs font-extrabold text-[#0B2545]">
+                {user?.name || 'Administrator'}
               </span>
-              <h1 className="font-extrabold tracking-tight text-sm sm:text-base text-white block leading-none truncate">
-                HR &amp; Administrative Analytics Portal
-              </h1>
-            </div>
-          </div>
-
-          {/* Authenticated User Identity & Sign Out */}
-          <div className="flex items-center gap-3.5 shrink-0">
-            <div className="hidden sm:flex flex-col text-right">
-              <span className="text-xs sm:text-sm font-bold text-white leading-tight">
-                {user?.name}
-              </span>
-              <span className="text-xs font-medium text-slate-300">
-                {user?.role || 'HR Administrator'}{user?.staffId ? ` \u2022 ${user.staffId}` : ''}
+              <span className="rounded-full bg-[#FCEFC7] px-2.5 py-0.5 text-[11px] font-bold text-[#0B2545]">
+                {user?.role === 'dean' ? 'Academic Dean' : 'HR Admin'}
               </span>
             </div>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-white bg-white/10 border border-white/20 hover:bg-white/20 transition-colors"
-              title="Sign Out of HR Portal"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs sm:text-sm font-bold text-[#0B2545] border border-slate-200 shadow-subtle hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              title="Sign Out"
             >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span>Sign Out</span>
+              <LogOut className="h-3.5 w-3.5 text-[#0B2545]" aria-hidden="true" />
+              <span>Sign out</span>
             </button>
           </div>
-        </div>
+        }
+      />
 
-        {/* Secondary Navigation Tab Bar */}
-        <div className="bg-[#071930] border-t border-white/15 px-4 sm:px-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-x-auto">
-            <nav className="flex space-x-1" aria-label="Dashboard sections" role="tablist">
-              {[
-                { id: 'overview', label: 'System Overview', count: null },
-                { id: 'departments', label: 'Department Matrix', count: departmentMetrics.length },
-                { id: 'faculty', label: 'Faculty Roster', count: facultyRoster.length },
-                { id: 'sentiment', label: 'Qualitative Feedback', count: feedbackItems.length },
-                ...(isHrAdmin
-                  ? [{ id: 'rubric', label: 'Evaluation Form (Rubric)', count: rubricSections.length }]
-                  : []),
-              ].map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex items-center gap-2 px-4 py-3 text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-                      isActive
-                        ? 'border-white text-white font-extrabold bg-white/5'
-                        : 'border-transparent text-slate-300 font-semibold hover:text-white hover:border-white/40'
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count !== null && (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
-                          isActive
-                            ? 'bg-white text-[#0B2545]'
-                            : 'bg-white/10 text-slate-200'
-                        }`}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+      {/* MINIMALIST PILL NAVIGATION */}
+      <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 pt-6">
+        <div className="flex items-center justify-between gap-4 overflow-x-auto pb-1">
+          <nav
+            className="inline-flex items-center gap-1.5 rounded-full bg-white p-1.5 border border-slate-200/80 shadow-subtle"
+            aria-label="Dashboard sections"
+            role="tablist"
+          >
+            {[
+              { id: 'overview', label: 'Overview', count: null },
+              { id: 'departments', label: 'Departments', count: departmentMetrics.length },
+              { id: 'faculty', label: 'Faculty', count: facultyRoster.length },
+              { id: 'sentiment', label: 'Remarks', count: feedbackItems.length },
+              ...(isHrAdmin
+                ? [{ id: 'rubric', label: 'Rubric Form', count: rubricSections.length }]
+                : []),
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'bg-[#0B2545] text-white shadow-subtle'
+                      : 'text-slate-600 hover:text-[#0B2545] hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.count !== null && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold tabular-nums ${
+                        isActive
+                          ? 'bg-white/15 text-[#F5B800]'
+                          : 'bg-[#EBF1FA] text-[#0B2545]'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {overview?.academic_period?.label && (
+            <span className="hidden lg:inline-block rounded-full bg-[#FCEFC7] px-3.5 py-1.5 text-xs font-bold text-[#0B2545] shrink-0">
+              {overview.academic_period.label}
+            </span>
+          )}
         </div>
-      </header>
+      </div>
 
       {/* MAIN WORKSPACE */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 sm:px-10 py-6 sm:py-8 flex flex-col gap-6">
         {/* CRUD Notification Toast / Alert Banner */}
         {crudNotification && (
           <div
-            className={`rounded-xl p-4 flex items-center justify-between gap-3 border shadow-subtle ${
+            className={`rounded-2xl p-4 flex items-center justify-between gap-3 border shadow-subtle ${
               crudNotification.type === 'error'
                 ? 'bg-red-50 border-red-200 text-red-800'
                 : crudNotification.type === 'warning'
@@ -761,20 +775,20 @@ export default function HRDashboardPage() {
         )}
 
         {/* GLOBAL FILTER & ACTION TOOLBAR */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-xl bg-white p-4 sm:p-5 border border-slate-200 shadow-card">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 rounded-[24px] bg-white p-4 sm:p-5 border border-slate-200/80 shadow-card">
           <div className="flex flex-wrap items-center gap-3">
             <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">
-                {activeTab === 'overview' && 'Institutional Evaluation Overview'}
-                {activeTab === 'departments' && 'Academic Department Performance Matrix'}
-                {activeTab === 'faculty' && 'Complete Faculty Evaluation Roster'}
-                {activeTab === 'sentiment' && 'Anonymized Student Feedback & Themes'}
-                {activeTab === 'rubric' && 'Official Evaluation Form (SET Questionnaire Rubric)'}
-              </h2>
+              <h1 className="text-base sm:text-lg font-extrabold text-[#0B2545] tracking-tight leading-tight">
+                {activeTab === 'overview' && 'Evaluation Overview'}
+                {activeTab === 'departments' && 'Department Performance'}
+                {activeTab === 'faculty' && 'Faculty Roster'}
+                {activeTab === 'sentiment' && 'Anonymized Student Remarks'}
+                {activeTab === 'rubric' && 'Evaluation Questionnaire (Rubric)'}
+              </h1>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Department Filter Dropdown */}
             <div className="flex items-center gap-2">
               <label htmlFor="dashboard-dept-filter" className="sr-only">
@@ -784,12 +798,12 @@ export default function HRDashboardPage() {
                 id="dashboard-dept-filter"
                 value={selectedDeptFilter}
                 onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-800 focus:border-[#0B2545] focus-visible:ring-2 focus-visible:ring-[#0B2545]/20 transition-colors"
+                className="h-10 rounded-full border border-slate-200 bg-slate-50/70 px-4 text-xs sm:text-sm font-bold text-[#0B2545] focus:bg-white focus:border-[#0B2545] transition-colors"
               >
                 <option value="ALL">All Departments</option>
                 {departmentMetrics.map((d) => (
                   <option key={d.code} value={d.code}>
-                    {d.code} &ndash; {d.name}
+                    {d.code} &middot; {d.name}
                   </option>
                 ))}
               </select>
@@ -798,16 +812,16 @@ export default function HRDashboardPage() {
             {/* Search Input */}
             <div className="relative flex-1 sm:flex-initial">
               <Search
-                className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                 aria-hidden="true"
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search faculty, course, or dept..."
+                placeholder="Search teacher, course, or dept..."
                 aria-label="Search faculty, course, or department"
-                className="h-10 w-full sm:w-60 pl-9 pr-8 text-xs sm:text-sm rounded-lg border border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:border-[#0B2545] focus-visible:ring-2 focus-visible:ring-[#0B2545]/20 transition-colors"
+                className="h-10 w-full sm:w-60 pl-9 pr-8 text-xs sm:text-sm rounded-full border border-slate-200 bg-slate-50/70 text-[#0B2545] placeholder-slate-400 focus:bg-white focus:border-[#0B2545] transition-colors"
               />
               {searchQuery && (
                 <button
@@ -825,9 +839,9 @@ export default function HRDashboardPage() {
               <button
                 type="button"
                 onClick={resetAllFilters}
-                className="h-10 px-3 rounded-lg border border-slate-300 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+                className="h-10 px-4 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                Reset Filters
+                Reset
               </button>
             )}
 
@@ -838,10 +852,10 @@ export default function HRDashboardPage() {
                 setExportSuccessMessage('');
                 setShowExportModal(true);
               }}
-              className="h-10 inline-flex items-center gap-2 rounded-lg bg-[#0B2545] hover:bg-[#133C6E] active:bg-[#040F21] px-4 text-xs sm:text-sm font-bold text-white transition-colors shadow-subtle whitespace-nowrap"
+              className="h-10 inline-flex items-center gap-2 rounded-full bg-[#0B2545] hover:bg-[#133C6E] px-4 text-xs sm:text-sm font-bold text-white transition-colors shadow-subtle whitespace-nowrap"
             >
-              <FileSpreadsheet className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>Export Audit Report</span>
+              <FileSpreadsheet className="h-4 w-4 shrink-0 text-[#F5B800]" aria-hidden="true" />
+              <span>Export CSV</span>
             </button>
           </div>
         </div>
@@ -851,89 +865,85 @@ export default function HRDashboardPage() {
         =================================================================== */}
         {activeTab === 'overview' && (
           <>
-            {/* 4-COLUMN KPI SUMMARY CARDS — Strict Navy & White */}
+            {/* 4-COLUMN MINIMALIST KPI CARDS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* KPI 1 */}
-              <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-card flex flex-col justify-between">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    Student Submissions
-                  </span>
-                </div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Submissions
+                </span>
+                <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
                   {overview?.kpis?.total_evaluations ?? 0}
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span>Verified Single-Entry</span>
-                  <span className="font-bold text-slate-700">{overview?.kpis?.completion_rate ?? 0}% Turnout</span>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span>Anonymous ledger</span>
+                  <span className="rounded-full bg-[#EBF1FA] px-2.5 py-0.5 font-extrabold text-[#0B2545]">
+                    {overview?.kpis?.completion_rate ?? 0}% turnout
+                  </span>
                 </div>
               </div>
 
               {/* KPI 2 */}
-              <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-card flex flex-col justify-between">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    Faculty Evaluated
-                  </span>
-                </div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Teachers Rated
+                </span>
+                <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
                   {overview?.kpis?.evaluated_faculty_count ?? 0}
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span>Of {overview?.kpis?.active_faculty_count ?? 0} Active</span>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span>Of {overview?.kpis?.active_faculty_count ?? 0} active</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('faculty')}
                     className="font-bold text-[#0B2545] hover:underline"
                   >
-                    View Roster &rarr;
+                    View roster &rarr;
                   </button>
                 </div>
               </div>
 
               {/* KPI 3 */}
-              <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-card flex flex-col justify-between">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    Institutional Mean
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Overall Mean
                   </span>
-                  <span className="rounded-md bg-[#0B2545] px-2 py-0.5 text-xs font-bold text-white">
-                    5-Point Scale
+                  <span className="rounded-full bg-[#FCEFC7] px-2.5 py-0.5 text-[11px] font-bold text-[#0B2545]">
+                    1 to 5
                   </span>
                 </div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+                <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
                   {overview?.kpis?.overall_mean ? Number(overview.kpis.overall_mean).toFixed(2) : '0.00'}
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span className="font-bold text-slate-700">{overview?.kpis?.descriptive_rating ?? 'No Evaluations'}</span>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-bold text-[#0B2545]">{overview?.kpis?.descriptive_rating ?? 'No Evaluations'}</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('departments')}
                     className="font-bold text-[#0B2545] hover:underline"
                   >
-                    By Dept &rarr;
+                    By dept &rarr;
                   </button>
                 </div>
               </div>
 
               {/* KPI 4 */}
-              <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-card flex flex-col justify-between">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    Written Remarks
-                  </span>
-                </div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight my-1">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Written Remarks
+                </span>
+                <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
                   {feedbackItems.length}
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span>Qualitative Feedback</span>
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span>Student comments</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab('sentiment')}
                     className="font-bold text-[#0B2545] hover:underline"
                   >
-                    Read Remarks &rarr;
+                    Read all &rarr;
                   </button>
                 </div>
               </div>
@@ -942,15 +952,15 @@ export default function HRDashboardPage() {
             {/* MAIN ANALYTICS GRID: Department Coverage (7 Cols) & Roster/Feedback Previews (5 Cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left 7 Cols: Department Performance Table */}
-              <div className="lg:col-span-7 rounded-xl bg-white border border-slate-200 shadow-card flex flex-col justify-between overflow-hidden">
+              <div className="lg:col-span-7 rounded-[24px] bg-white border border-slate-200/80 shadow-card flex flex-col justify-between overflow-hidden">
                 <div>
-                  <div className="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
-                        Academic Department Coverage
+                      <h3 className="text-base sm:text-lg font-extrabold text-[#0B2545]">
+                        Department Turnout
                       </h3>
-                      <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
-                        Select any department row to inspect its faculty evaluation roster.
+                      <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                        Select a department to inspect its faculty roster.
                       </p>
                     </div>
                     <button
@@ -958,23 +968,23 @@ export default function HRDashboardPage() {
                       onClick={() => setActiveTab('departments')}
                       className="text-xs font-bold text-[#0B2545] hover:underline inline-flex items-center gap-1"
                     >
-                      <span>Full Department Matrix</span>
+                      <span>All metrics</span>
                       <ChevronRight className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
 
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs sm:text-sm">
-                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider">
+                      <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider">
                         <tr>
                           <th className="py-3.5 px-5 font-bold">Department</th>
                           <th className="py-3.5 px-3 text-right font-bold">Responses</th>
                           <th className="py-3.5 px-4 font-bold">Turnout</th>
                           <th className="py-3.5 px-3 text-right font-bold">Mean</th>
-                          <th className="py-3.5 px-4 text-right font-bold">Action</th>
+                          <th className="py-3.5 px-4 text-right font-bold"></th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200">
+                      <tbody className="divide-y divide-slate-100">
                         {filteredDepartments.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="py-8 px-5 text-center text-sm text-slate-500">
@@ -986,43 +996,47 @@ export default function HRDashboardPage() {
                             <tr
                               key={dept.code}
                               onClick={() => handleInspectDepartmentRoster(dept.code)}
-                              className="hover:bg-slate-50 cursor-pointer transition-colors group"
+                              className="hover:bg-slate-50/70 cursor-pointer transition-colors group"
                             >
                               <td className="py-4 px-5">
-                                <div className="font-bold text-slate-900 group-hover:text-[#0B2545]">
-                                  {dept.name}
-                                </div>
-                                <div className="text-xs text-slate-500 mt-0.5">
-                                  {dept.code} &bull; {dept.facultyCount} Faculty Members
+                                <div className="flex items-center gap-3">
+                                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EBF1FA] text-xs font-extrabold text-[#0B2545]">
+                                    {dept.code}
+                                  </span>
+                                  <div>
+                                    <div className="font-bold text-[#0B2545]">
+                                      {dept.name}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      {dept.facultyCount} teachers
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="py-4 px-3 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">
+                              <td className="py-4 px-3 text-right tabular-nums font-semibold text-[#0B2545] whitespace-nowrap">
                                 {dept.totalResponses}{' '}
                                 <span className="text-slate-400 font-normal">/ {dept.targetResponses}</span>
                               </td>
                               <td className="py-4 px-4 w-36">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="h-2 flex-1 rounded-full bg-slate-200 overflow-hidden">
+                                  <div className="h-1.5 flex-1 rounded-full bg-slate-200 overflow-hidden">
                                     <div
                                       className="h-full bg-[#0B2545] rounded-full"
                                       style={{ width: `${dept.completion}%` }}
                                     />
                                   </div>
-                                  <span className="text-xs font-bold tabular-nums text-slate-800 w-10 text-right">
+                                  <span className="text-xs font-bold tabular-nums text-[#0B2545] w-10 text-right">
                                     {dept.completion}%
                                   </span>
                                 </div>
                               </td>
                               <td className="py-4 px-3 text-right">
-                                <span className="inline-flex items-center justify-center rounded-md bg-[#0B2545] px-2 py-1 text-xs font-extrabold text-white tabular-nums">
+                                <span className="inline-flex items-center justify-center rounded-lg bg-[#0B2545] px-2.5 py-1 text-xs font-extrabold text-white tabular-nums">
                                   {Number(dept.avgRating || 0).toFixed(2)}
                                 </span>
                               </td>
                               <td className="py-4 px-4 text-right">
-                                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#0B2545] group-hover:underline whitespace-nowrap">
-                                  <span>Roster</span>
-                                  <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                                </span>
+                                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-[#0B2545] inline-block" aria-hidden="true" />
                               </td>
                             </tr>
                           ))
@@ -1032,22 +1046,22 @@ export default function HRDashboardPage() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-                  <span className="font-medium">Total Verified Responses</span>
+                <div className="p-4 bg-slate-50/60 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  <span className="font-medium">Verified anonymous single-entry submissions</span>
                 </div>
               </div>
 
               {/* Right 5 Cols: Top Faculty & Qualitative Themes Preview */}
               <div className="lg:col-span-5 flex flex-col gap-6">
                 {/* Leading Faculty Roster Card */}
-                <div className="rounded-xl bg-white border border-slate-200 shadow-card p-5">
-                  <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-200">
+                <div className="rounded-[24px] bg-white border border-slate-200/80 shadow-card p-5 sm:p-6">
+                  <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
                     <div>
-                      <h3 className="text-base font-extrabold text-slate-900">
-                        Highest Rated Faculty
+                      <h3 className="text-base font-extrabold text-[#0B2545]">
+                        Top Rated Teachers
                       </h3>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Click any instructor to inspect their domain breakdown
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Click an instructor to inspect domain scores
                       </p>
                     </div>
                     <button
@@ -1055,7 +1069,7 @@ export default function HRDashboardPage() {
                       onClick={() => setActiveTab('faculty')}
                       className="text-xs font-bold text-[#0B2545] hover:underline whitespace-nowrap"
                     >
-                      All {facultyRoster.length} Faculty &rarr;
+                      All {facultyRoster.length} &rarr;
                     </button>
                   </div>
 
@@ -1065,22 +1079,27 @@ export default function HRDashboardPage() {
                         key={fac.id}
                         type="button"
                         onClick={() => setSelectedFacultyDetail(fac)}
-                        className="w-full p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#0B2545] hover:bg-slate-50/80 transition-colors flex items-center justify-between text-left group"
+                        className="w-full p-3.5 rounded-2xl border border-slate-200/80 bg-white hover:border-[#0B2545]/40 hover:bg-slate-50/70 transition-all flex items-center justify-between text-left group"
                       >
-                        <div className="min-w-0 pr-3">
-                          <p className="text-sm font-bold text-slate-900 group-hover:text-[#0B2545] truncate">
-                            {fac.name}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-0.5 truncate">
-                            {fac.dept} &bull; {fac.courses}
-                          </p>
+                        <div className="flex items-center gap-3 min-w-0 pr-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EBF1FA] text-xs font-extrabold text-[#0B2545]">
+                            {fac.dept}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-[#0B2545] truncate">
+                              {fac.name}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5 truncate">
+                              {fac.courses}
+                            </p>
+                          </div>
                         </div>
                         <div className="text-right shrink-0 flex items-center gap-3">
                           <div>
                             <span className="block text-sm font-extrabold text-[#0B2545] tabular-nums">
                               {Number(fac.rating || 0).toFixed(2)}
                             </span>
-                            <span className="block text-[11px] font-medium text-slate-500 tabular-nums">
+                            <span className="block text-[11px] font-medium text-slate-400 tabular-nums">
                               {fac.responses} evals
                             </span>
                           </div>
@@ -1092,14 +1111,14 @@ export default function HRDashboardPage() {
                 </div>
 
                 {/* Qualitative Feedback Themes Preview */}
-                <div className="rounded-xl bg-white border border-slate-200 shadow-card p-5">
-                  <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-200">
+                <div className="rounded-[24px] bg-white border border-slate-200/80 shadow-card p-5 sm:p-6">
+                  <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
                     <div>
-                      <h3 className="text-base font-extrabold text-slate-900">
-                        Student Feedback Themes
+                      <h3 className="text-base font-extrabold text-[#0B2545]">
+                        Recent Student Remarks
                       </h3>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        recent observations from written remarks
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Anonymized comments from this semester
                       </p>
                     </div>
                     <button
@@ -1107,26 +1126,26 @@ export default function HRDashboardPage() {
                       onClick={() => setActiveTab('sentiment')}
                       className="text-xs font-bold text-[#0B2545] hover:underline whitespace-nowrap"
                     >
-                      View Remarks &rarr;
+                      View all &rarr;
                     </button>
                   </div>
 
                   <div className="space-y-3">
                     {feedbackItems.length === 0 ? (
-                      <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 text-center">
+                      <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 text-xs text-slate-500 text-center">
                         No student feedback remarks recorded yet.
                       </div>
                     ) : (
                       feedbackItems.slice(0, 3).map((item) => (
                         <div
                           key={item.id}
-                          className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70"
+                          className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50"
                         >
                           <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="text-xs sm:text-sm font-bold text-slate-900">
+                            <span className="text-xs sm:text-sm font-bold text-[#0B2545]">
                               {item.faculty_name}
                             </span>
-                            <span className="rounded bg-[#0B2545] px-2 py-0.5 text-xs font-bold text-white tabular-nums shrink-0">
+                            <span className="rounded-lg bg-[#EBF1FA] px-2 py-0.5 text-xs font-extrabold text-[#0B2545] tabular-nums shrink-0">
                               {item.department_code}
                             </span>
                           </div>

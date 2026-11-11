@@ -177,6 +177,9 @@ class AnalyticsService
             $target = (int) $dept->target_evaluations;
             $turnout = $target > 0 ? round(($count / $target) * 100, 1) : 0.0;
             $mean = $count > 0 ? round((float) $evalQuery->avg('composite_mean'), 2) : 0.00;
+            $secA = $count > 0 ? round((float) $evalQuery->avg('section_a_mean'), 2) : 0.00;
+            $secB = $count > 0 ? round((float) $evalQuery->avg('section_b_mean'), 2) : 0.00;
+            $secC = $count > 0 ? round((float) $evalQuery->avg('section_c_mean'), 2) : 0.00;
 
             return [
                 'id' => $dept->id,
@@ -187,6 +190,9 @@ class AnalyticsService
                 'target_evaluations' => $target,
                 'completion_rate' => $turnout,
                 'average_rating' => $mean,
+                'section_a_mean' => $secA,
+                'section_b_mean' => $secB,
+                'section_c_mean' => $secC,
                 'descriptive_rating' => self::getDescriptiveRating($mean),
                 'faculty_count' => $dept->faculty_count,
             ];
@@ -239,6 +245,11 @@ class AnalyticsService
             $secC = $evalCount > 0 ? round((float) $evalQuery->avg('section_c_mean'), 2) : 0.00;
 
             $courseCodes = (clone $evalQuery)->distinct('course_code')->pluck('course_code')->filter()->values()->toArray();
+            $latestRemark = (clone $evalQuery)
+                ->whereNotNull('qualitative_comment')
+                ->where('qualitative_comment', '!=', '')
+                ->orderByDesc('submitted_at')
+                ->value('qualitative_comment');
 
             return [
                 'id' => $fac->id,
@@ -255,6 +266,7 @@ class AnalyticsService
                 'section_c_mean' => $secC,
                 'descriptive_rating' => self::getDescriptiveRating($compositeMean),
                 'courses' => implode(', ', $courseCodes),
+                'sample_remark' => $latestRemark,
             ];
         })->toArray();
     }

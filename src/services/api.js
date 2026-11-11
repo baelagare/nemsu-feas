@@ -3,9 +3,10 @@
  * Connects frontend SPA to the Laravel RESTful API backend.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1';
 
 export const TOKEN_STORAGE_KEY = 'nemsu_auth_token';
+export const ANON_STUDENT_KEY = 'nemsu_anon_student_id';
 
 /**
  * Universal fetch wrapper handling headers, bearer auth, and error payloads.
@@ -119,10 +120,17 @@ export function getReportExportUrl(academicPeriodId = null, departmentId = null)
 // Student Evaluation API
 // ---------------------------------------------------------------------------
 
-export async function initiateStudentSession(email) {
+export async function initiateStudentSession(email = null) {
+  let anonymousId = localStorage.getItem(ANON_STUDENT_KEY);
+  if (!anonymousId) {
+    anonymousId = `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(ANON_STUDENT_KEY, anonymousId);
+  }
+
+  const payload = email ? { email } : { anonymous_id: anonymousId };
   const data = await apiFetch('/auth/student-session', {
     method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify(payload),
   });
   if (data?.data?.token) {
     localStorage.setItem(TOKEN_STORAGE_KEY, data.data.token);

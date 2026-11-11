@@ -4,7 +4,45 @@
  * Student Evaluation of Teachers (SET)
  */
 
-export const DEPARTMENTS = [];
+export const DEPARTMENTS = [
+  { id: 2, code: 'DBM', name: 'Business and Management', fullName: 'Department of Business and Management' },
+  { id: 1, code: 'DCS', name: 'Computer Studies', fullName: 'Department of Computer Studies' },
+  { id: 3, code: 'DIT', name: 'Industrial Technology', fullName: 'Department of Industrial Technology' },
+  { id: 4, code: 'DGTT', name: 'General Teacher Education', fullName: 'Department of General Teacher Education' },
+  { id: 5, code: 'CCJE', name: 'Criminal Justice Education', fullName: 'College of Criminal Justice Education' },
+];
+
+export const FALLBACK_FACULTY_BY_DEPT = {
+  DCS: [
+    { id: 1, name: 'Engr. Maria Santos', courses: 'CS 101, IT 211' },
+    { id: 2, name: 'Prof. Alexander Cruz', courses: 'IT 211, CS 301' },
+    { id: 3, name: 'Dr. Jane Doe', courses: 'CS 301, IT 312' },
+    { id: 4, name: 'Prof. Juan dela Cruz', courses: 'CS 101, IT 312' },
+  ],
+  DBM: [
+    { id: 5, name: 'Dr. Arthur Pendelton', courses: 'BA 101, ACC 201' },
+    { id: 6, name: 'Prof. Karen Miller', courses: 'BA 101, ACC 201' },
+  ],
+  DIT: [
+    { id: 7, name: 'Engr. Roberto Alcantara', courses: 'ITEC 110, ET 202' },
+    { id: 8, name: 'Prof. Mark Johnson', courses: 'ITEC 110, ET 202' },
+  ],
+  DGTT: [
+    { id: 9, name: 'Dr. Lourdes Mendoza', courses: 'ED 101, ED 205' },
+    { id: 10, name: 'Prof. Cherry Garcia', courses: 'ED 101, ED 205' },
+  ],
+  CCJE: [
+    { id: 11, name: 'Atty. Ronald B. Dela Cruz', courses: 'CRIM 101, LEA 201' },
+    { id: 12, name: 'Prof. Dennis Torres', courses: 'CRIM 101, LEA 201' },
+  ],
+};
+
+export function formatDepartmentName(name = '') {
+  return name
+    .replace(/^Department of\s+/i, '')
+    .replace(/^College of\s+/i, '')
+    .trim();
+}
 
 export const RATING_SCALE = [
   {

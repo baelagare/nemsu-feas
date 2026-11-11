@@ -1,30 +1,16 @@
 import React from 'react';
 
 /**
- * Minimal institutional footer with authentic university attribution.
+ * Minimalist institutional footer with Data Privacy Act of 2012 (RA 10173) notice.
  */
-export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
+export default function Footer({ className = '' }) {
   return (
     <footer
-      className="mt-8 border-t border-slate-200 pt-5 text-left"
+      className={`w-full border-t border-slate-200/80 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 ${className}`}
       aria-label="Institutional footer"
     >
-      <div className="flex flex-col gap-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-bold text-slate-800">
-            North Eastern Mindanao State University &ndash; Cantilan Campus
-          </p>
-          <p className="text-slate-500 mt-0.5">
-            Office of the Campus Director &bull; Human Resource Management Office
-          </p>
-        </div>
-
-        <div className="text-slate-500 sm:text-right shrink-0">
-          <p>&copy; {currentYear} NEMSU. All rights reserved.</p>
-        </div>
-      </div>
+      <p>Protected under the Data Privacy Act of 2012 (RA 10173).</p>
+      <p>&copy; 2026 NEMSU Cantilan</p>
     </footer>
   );
 }
