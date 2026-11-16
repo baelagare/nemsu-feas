@@ -17,7 +17,9 @@ class HealthController extends Controller
         try {
             DB::connection()->getPdo();
         } catch (\Throwable $e) {
-            $dbStatus = 'unreachable: ' . $e->getMessage();
+            $dbStatus = config('app.debug')
+                ? 'unreachable: ' . $e->getMessage()
+                : 'unreachable';
         }
 
         return response()->json([

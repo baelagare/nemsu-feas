@@ -19,13 +19,22 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter([
-        env('FRONTEND_URL', 'http://localhost:5173'),
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174',
-    ]),
+    'allowed_origins' => array_values(array_unique(array_filter(array_merge(
+        array_map(
+            static fn (string $origin): string => rtrim(trim($origin), '/'),
+            explode(',', (string) env('FRONTEND_URL', 'http://localhost:5173'))
+        ),
+        array_map(
+            static fn (string $origin): string => rtrim(trim($origin), '/'),
+            explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))
+        ),
+        [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:5174',
+            'http://127.0.0.1:5174',
+        ]
+    )))),
 
     'allowed_origins_patterns' => [
         '#^http://(localhost|127\.0\.0\.1)(:\d+)?$#',

@@ -224,9 +224,10 @@ class AnalyticsService
         }
 
         if ($search) {
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+            $needle = '%' . mb_strtolower($search) . '%';
+            $query->where(function (Builder $q) use ($needle) {
+                $q->whereRaw('LOWER(name) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$needle]);
             });
         }
 
@@ -308,11 +309,12 @@ class AnalyticsService
         }
 
         if ($search) {
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('qualitative_comment', 'like', "%{$search}%")
-                    ->orWhere('course_code', 'like', "%{$search}%")
-                    ->orWhereHas('faculty', function ($facQ) use ($search) {
-                        $facQ->where('name', 'like', "%{$search}%");
+            $needle = '%' . mb_strtolower($search) . '%';
+            $query->where(function (Builder $q) use ($needle) {
+                $q->whereRaw('LOWER(qualitative_comment) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(course_code) LIKE ?', [$needle])
+                    ->orWhereHas('faculty', function ($facQ) use ($needle) {
+                        $facQ->whereRaw('LOWER(name) LIKE ?', [$needle]);
                     });
             });
         }
