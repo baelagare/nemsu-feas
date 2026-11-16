@@ -15,6 +15,8 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import Spinner from '../components/loading/Spinner';
+import LoadingScreen from '../components/loading/LoadingScreen';
 
 /**
  * Minimalist Staff & HR Authentication Portal.
@@ -31,6 +33,8 @@ export default function HRLoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const from = location.state?.from?.pathname || '/hr/dashboard';
 
@@ -50,17 +54,22 @@ export default function HRLoginPage() {
 
     if (!identifier.trim()) {
       setError('Please enter your institutional email or Staff ID.');
+      setShakeKey((k) => k + 1);
       return;
     }
     if (!password.trim()) {
       setError('Please enter your password.');
+      setShakeKey((k) => k + 1);
       return;
     }
 
+    setIsSigningIn(true);
     const result = await login(identifier, password);
     if (result.success) {
       navigate(from, { replace: true });
     } else {
+      setIsSigningIn(false);
+      setShakeKey((k) => k + 1);
       setError(
         result.error ||
           'Authentication failed. Please verify your institutional credentials.'
@@ -87,7 +96,7 @@ export default function HRLoginPage() {
       <main className="w-full max-w-6xl mx-auto px-6 sm:px-10 py-10 sm:py-14 my-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* LEFT COLUMN: MINIMALIST STAFF PORTAL INTRO */}
-          <div className="lg:col-span-6 flex flex-col items-start">
+          <div className="lg:col-span-6 flex flex-col items-start stagger">
             <span className="inline-block rounded-full bg-[#FCEFC7] px-3.5 py-1.5 text-xs font-bold text-[#0B2545] mb-5">
               Academic Deans &amp; HRMO
             </span>
@@ -122,7 +131,10 @@ export default function HRLoginPage() {
 
           {/* RIGHT COLUMN: SIGN IN CARD */}
           <div className="lg:col-span-6 w-full max-w-lg lg:max-w-none mx-auto">
-            <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command">
+            <div
+              className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command animate-scale-in"
+              style={{ animationDelay: '120ms' }}
+            >
               <div className="flex items-start gap-3 mb-6">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0B2545] text-white mt-0.5">
                   <Shield className="h-3.5 w-3.5 text-[#F5B800]" aria-hidden="true" />
@@ -139,9 +151,10 @@ export default function HRLoginPage() {
 
               {error && (
                 <div
+                  key={shakeKey}
                   role="alert"
                   aria-live="polite"
-                  className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-start gap-3 mb-5 shadow-subtle"
+                  className="animate-shake rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-start gap-3 mb-5 shadow-subtle"
                 >
                   <AlertCircle
                     className="h-4 w-4 shrink-0 mt-0.5 text-rose-600"
@@ -249,13 +262,14 @@ export default function HRLoginPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-full bg-[#0B2545] px-6 text-sm font-bold text-white shadow-subtle hover:bg-[#133C6E] active:bg-[#040F21] transition-colors disabled:opacity-60"
+                    className="group w-full h-12 inline-flex items-center justify-center gap-2 rounded-full bg-[#0B2545] px-6 text-sm font-bold text-white shadow-subtle hover:bg-[#133C6E] active:bg-[#040F21] transition-all active:scale-[0.98] disabled:opacity-60"
                   >
+                    {isLoading && <Spinner className="h-4 w-4" />}
                     <span>
                       {isLoading ? 'Signing in...' : 'Sign in to dashboard'}
                     </span>
                     {!isLoading && (
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -264,6 +278,15 @@ export default function HRLoginPage() {
           </div>
         </div>
       </main>
+
+      {/* Sign-in loading overlay */}
+      {isSigningIn && (
+        <LoadingScreen
+          variant="overlay"
+          message="Signing you in"
+          subMessage="Preparing your analytics dashboard"
+        />
+      )}
 
       {/* Help Modal */}
       {showHelpModal && (

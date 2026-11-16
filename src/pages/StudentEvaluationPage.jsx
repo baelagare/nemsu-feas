@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Check,
   Printer,
-  RefreshCw,
   Lock,
   Star,
   ShieldCheck,
@@ -17,6 +16,9 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import Spinner, { LoadingDots } from '../components/loading/Spinner';
+import LoadingScreen from '../components/loading/LoadingScreen';
+import { EvaluationFormSkeleton } from '../components/loading/Skeleton';
 import {
   initiateStudentSession,
   fetchActiveAcademicPeriod,
@@ -434,17 +436,12 @@ export default function StudentEvaluationPage() {
       {/* MAIN CONTAINER */}
       <main className="flex-1 max-w-3xl w-full mx-auto px-6 sm:px-10 py-8 sm:py-10 flex flex-col gap-5">
         {isLoadingConfig ? (
-          <div className="rounded-[28px] bg-white p-12 border border-slate-200/70 shadow-command text-center flex flex-col items-center justify-center gap-3">
-            <RefreshCw className="h-7 w-7 text-[#0B2545] animate-spin" />
-            <h2 className="text-base font-extrabold text-[#0B2545]">
-              Loading evaluation form...
-            </h2>
-          </div>
+          <EvaluationFormSkeleton />
         ) : (
           <>
             {/* MINIMALIST PROGRESS BAR & CONTEXT PILL */}
             {step < confirmationStepIndex && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 animate-fade-in">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="inline-block rounded-full bg-[#FCEFC7] px-3 py-1 text-xs font-bold text-[#0B2545]">
@@ -477,7 +474,7 @@ export default function StudentEvaluationPage() {
 
                 {/* Active Teacher Context Pill on Orientation & Rating Steps */}
                 {step >= 1 && selectedFacultyObj && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white px-4 py-2.5 border border-slate-200/80 shadow-subtle text-xs sm:text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white px-4 py-2.5 border border-slate-200/80 shadow-subtle text-xs sm:text-sm animate-fade-down">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-slate-500 font-medium">Teacher:</span>
                       <span className="font-extrabold text-[#0B2545]">
@@ -504,9 +501,10 @@ export default function StudentEvaluationPage() {
             {/* ERROR ALERT */}
             {error && (
               <div
+                key={error}
                 role="alert"
                 aria-live="polite"
-                className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-start gap-3 shadow-subtle"
+                className="animate-shake rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-start gap-3 shadow-subtle"
               >
                 <AlertCircle
                   className="h-4 w-4 shrink-0 mt-0.5 text-rose-600"
@@ -518,7 +516,7 @@ export default function StudentEvaluationPage() {
 
             {/* STEP 0 (STEP 1): CHOOSE TEACHER, COURSE & DATA PRIVACY NOTICE */}
             {step === 0 && (
-              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-6">
+              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-6 animate-fade-up">
                 <div className="flex items-start gap-3">
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0B2545] text-xs font-extrabold text-white mt-0.5">
                     1
@@ -543,9 +541,10 @@ export default function StudentEvaluationPage() {
                       Teacher <span className="text-rose-600">*</span>
                     </label>
                     {isLoadingFaculty && (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-[#0B2545] font-semibold">
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        <span>Loading teachers...</span>
+                      <span className="inline-flex items-center gap-1.5 text-xs text-[#0B2545] font-semibold animate-fade-in">
+                        <Spinner className="h-3.5 w-3.5" />
+                        <span>Loading teachers</span>
+                        <LoadingDots className="bg-[#0B2545]" />
                       </span>
                     )}
                   </div>
@@ -710,7 +709,7 @@ export default function StudentEvaluationPage() {
 
             {/* STEP 1 (STEP 2): FACULTY EVALUATION RATING SCALE */}
             {step === ratingScaleStepIndex && (
-              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-6">
+              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-6 animate-fade-up">
                 <div className="flex items-start gap-3">
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0B2545] text-xs font-extrabold text-white mt-0.5">
                     2
@@ -729,7 +728,7 @@ export default function StudentEvaluationPage() {
                 </div>
 
                 {/* 5-Point Rating Scale Guide */}
-                <div className="space-y-2.5">
+                <div className="space-y-2.5 stagger">
                   {ratingScale.map((scaleItem) => (
                     <div
                       key={scaleItem.score}
@@ -767,7 +766,10 @@ export default function StudentEvaluationPage() {
 
             {/* RATING STEPS: SECTIONS A, B, C */}
             {isRatingStep && currentSection && (
-              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-6">
+              <div
+                key={currentSection.id ?? currentSection.code ?? step}
+                className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-6 animate-slide-in-right"
+              >
                 {/* Section Header */}
                 <div className="flex flex-col gap-4 border-b border-slate-100 pb-5">
                   <div className="flex items-start justify-between gap-3">
@@ -786,7 +788,7 @@ export default function StudentEvaluationPage() {
                     </div>
 
                     <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold tabular-nums ${
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold tabular-nums transition-colors duration-300 ${
                         answeredInCurrentSection === totalInCurrentSection
                           ? 'bg-[#0B2545] text-white'
                           : 'bg-[#EBF1FA] text-[#0B2545]'
@@ -815,7 +817,7 @@ export default function StudentEvaluationPage() {
                 </div>
 
                 {/* Criteria Questions */}
-                <div className="space-y-3.5">
+                <div className="space-y-3.5 stagger">
                   {currentSection.items?.map((item, index) => {
                     const currentScore = ratings[item.id];
                     const isAnswered = currentScore !== undefined;
@@ -823,7 +825,7 @@ export default function StudentEvaluationPage() {
                     return (
                       <div
                         key={item.id}
-                        className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+                        className={`rounded-2xl border p-4 sm:p-5 transition-all duration-300 ${
                           isAnswered
                             ? 'border-[#0B2545]/25 bg-white shadow-subtle'
                             : 'border-slate-200/80 bg-[#F8FAFC]/60'
@@ -846,7 +848,7 @@ export default function StudentEvaluationPage() {
                           </div>
 
                           {isAnswered && (
-                            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FCEFC7] text-[#0B2545] mt-0.5">
+                            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FCEFC7] text-[#0B2545] mt-0.5 animate-pop">
                               <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                             </span>
                           )}
@@ -866,10 +868,10 @@ export default function StudentEvaluationPage() {
                             return (
                               <label
                                 key={num}
-                                className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-xl cursor-pointer border text-center select-none transition-all ${
+                                className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-xl cursor-pointer border text-center select-none transition-all duration-200 active:scale-95 ${
                                   isSelected
-                                    ? 'bg-[#0B2545] text-white border-[#0B2545] shadow-subtle'
-                                    : 'bg-white text-[#0B2545] border-slate-200/90 hover:border-[#0B2545]/40 hover:bg-slate-50'
+                                    ? 'bg-[#0B2545] text-white border-[#0B2545] shadow-elevated scale-[1.03]'
+                                    : 'bg-white text-[#0B2545] border-slate-200/90 hover:border-[#0B2545]/40 hover:bg-slate-50 hover:-translate-y-0.5'
                                 }`}
                               >
                                 <input
@@ -887,7 +889,7 @@ export default function StudentEvaluationPage() {
                                   <Star
                                     className={`h-3 w-3 ${
                                       isSelected
-                                        ? 'text-[#F5B800] fill-[#F5B800]'
+                                        ? 'text-[#F5B800] fill-[#F5B800] animate-pop'
                                         : 'text-slate-300'
                                     }`}
                                   />
@@ -912,7 +914,7 @@ export default function StudentEvaluationPage() {
 
             {/* FINAL INPUT STEP: QUALITATIVE COMMENTS */}
             {step === qualitativeStepIndex && (
-              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-5">
+              <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command flex flex-col gap-5 animate-fade-up">
                 <div className="flex items-start gap-3">
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0B2545] text-xs font-extrabold text-white mt-0.5">
                     <Check className="h-3.5 w-3.5" />
@@ -950,9 +952,23 @@ export default function StudentEvaluationPage() {
 
             {/* CONFIRMATION RECEIPT */}
             {step === confirmationStepIndex && (
-              <div className="rounded-[28px] bg-white p-6 sm:p-10 border border-slate-200/70 shadow-command text-center flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B2545] text-[#F5B800] mb-4 shadow-subtle">
-                  <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
+              <div className="rounded-[28px] bg-white p-6 sm:p-10 border border-slate-200/70 shadow-command text-center flex flex-col items-center animate-scale-in stagger">
+                <div className="relative mb-4 h-14 w-14">
+                  <span className="absolute inset-0 rounded-2xl bg-[#F5B800]/50 animate-ring-pulse" />
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B2545] text-[#F5B800] shadow-elevated animate-pop">
+                    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.35" />
+                      <path
+                        d="M7.5 12.5l3 3 6-6.5"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeDasharray="48"
+                        className="animate-draw-check"
+                      />
+                    </svg>
+                  </div>
                 </div>
 
                 <span className="inline-block rounded-full bg-[#FCEFC7] px-3.5 py-1 text-xs font-bold text-[#0B2545] mb-3">
@@ -1041,7 +1057,7 @@ export default function StudentEvaluationPage() {
 
             {/* BOTTOM NAVIGATION BUTTONS */}
             {step < confirmationStepIndex && (
-              <div className="flex items-center justify-between gap-4 pt-1">
+              <div className="flex items-center justify-between gap-4 pt-1 animate-fade-in">
                 {step > 0 ? (
                   <button
                     type="button"
@@ -1065,10 +1081,10 @@ export default function StudentEvaluationPage() {
                   type="button"
                   onClick={handleNext}
                   disabled={isVerifyingSession || isSubmitting}
-                  className="h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#0B2545] px-6 text-xs sm:text-sm font-bold text-white shadow-subtle hover:bg-[#133C6E] transition-colors ml-auto disabled:opacity-60"
+                  className="h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#0B2545] px-6 text-xs sm:text-sm font-bold text-white shadow-subtle hover:bg-[#133C6E] transition-all active:scale-[0.97] ml-auto disabled:opacity-60"
                 >
                   {(isVerifyingSession || isSubmitting) && (
-                    <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
+                    <Spinner className="h-4 w-4" />
                   )}
                   <span>
                     {isVerifyingSession
@@ -1088,6 +1104,15 @@ export default function StudentEvaluationPage() {
           </>
         )}
       </main>
+
+      {/* Full-screen submitting overlay */}
+      {isSubmitting && (
+        <LoadingScreen
+          variant="overlay"
+          message="Submitting your evaluation"
+          subMessage="Securing your anonymous response"
+        />
+      )}
 
       {/* BOTTOM FOOTER */}
       <div className="w-full max-w-3xl mx-auto px-6 sm:px-10 pb-6 sm:pb-8">

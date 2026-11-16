@@ -96,6 +96,85 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+/* ==========================================================================
+   Motion System
+   ========================================================================== */
+
+/* Skeleton shimmer placeholder */
+.skeleton {
+  background-color: #E9EEF5;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.5s linear infinite;
+  border-radius: 0.5rem;
+}
+
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Every modal dialog gets a backdrop fade + panel scale-in automatically */
+[role='dialog'][aria-modal='true'] {
+  animation: dialog-backdrop-in 0.2s ease-out backwards;
+}
+
+[role='dialog'][aria-modal='true'] > * {
+  animation: dialog-panel-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes dialog-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Staggered children entrance: add .stagger to a parent */
+.stagger > * {
+  animation: stagger-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.stagger > *:nth-child(1) { animation-delay: 40ms; }
+.stagger > *:nth-child(2) { animation-delay: 90ms; }
+.stagger > *:nth-child(3) { animation-delay: 140ms; }
+.stagger > *:nth-child(4) { animation-delay: 190ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 290ms; }
+.stagger > *:nth-child(7) { animation-delay: 340ms; }
+.stagger > *:nth-child(8) { animation-delay: 390ms; }
+.stagger > *:nth-child(n + 9) { animation-delay: 440ms; }
+
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Interactive press feedback */
+.press {
+  transition: transform 120ms ease-out;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* Initial HTML splash (rendered before the JS bundle boots) */
+#app-splash {
+  transition: opacity 0.35s ease-out, visibility 0.35s ease-out;
+}
+#app-splash.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -103,6 +182,7 @@ a:focus-visible {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }

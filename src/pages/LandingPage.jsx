@@ -74,7 +74,7 @@ export default function LandingPage() {
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* LEFT COLUMN: HERO MESSAGING */}
-          <div className="lg:col-span-6 flex flex-col items-start">
+          <div className="lg:col-span-6 flex flex-col items-start stagger">
             <span className="inline-block rounded-full bg-[#FCEFC7] px-3.5 py-1.5 text-xs font-bold text-[#0B2545] mb-5">
               Student Evaluation of Teachers
             </span>
@@ -94,10 +94,14 @@ export default function LandingPage() {
               {[1, 2, 3, 4].map((star) => (
                 <Star
                   key={star}
-                  className="h-7 w-7 text-[#F5B800] fill-[#F5B800]"
+                  className="h-7 w-7 text-[#F5B800] fill-[#F5B800] animate-pop"
+                  style={{ animationDelay: `${320 + star * 90}ms` }}
                 />
               ))}
-              <Star className="h-7 w-7 text-[#DCE6F4] fill-[#DCE6F4]" />
+              <Star
+                className="h-7 w-7 text-[#DCE6F4] fill-[#DCE6F4] animate-pop"
+                style={{ animationDelay: '770ms' }}
+              />
             </div>
 
             {/* Feature Pills */}
@@ -121,7 +125,10 @@ export default function LandingPage() {
 
           {/* RIGHT COLUMN: PICK YOUR DEPARTMENT CARD */}
           <div className="lg:col-span-6 w-full max-w-lg lg:max-w-none mx-auto">
-            <div className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command">
+            <div
+              className="rounded-[28px] bg-white p-6 sm:p-8 border border-slate-200/70 shadow-command animate-scale-in"
+              style={{ animationDelay: '120ms' }}
+            >
               <div className="flex items-start gap-3 mb-5">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0B2545] text-xs font-extrabold text-white mt-0.5">
                   1
@@ -137,7 +144,7 @@ export default function LandingPage() {
               </div>
 
               <div
-                className="space-y-3"
+                className="space-y-3 stagger"
                 role="region"
                 aria-label="Academic departments"
               >
@@ -147,10 +154,10 @@ export default function LandingPage() {
                     to={`/student/evaluation?dept=${dept.code}`}
                     state={{ departmentId: dept.id, departmentCode: dept.code }}
                     data-testid={index === 0 ? 'role-card-student' : `dept-card-${dept.code}`}
-                    className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200/90 bg-white p-3 sm:p-3.5 hover:border-[#0B2545]/40 hover:bg-slate-50/70 transition-all"
+                    className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200/90 bg-white p-3 sm:p-3.5 hover:border-[#0B2545]/40 hover:bg-slate-50/70 hover:-translate-y-0.5 hover:shadow-card active:translate-y-0 active:scale-[0.99] transition-all duration-200"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EBF1FA] text-xs font-extrabold text-[#0B2545]">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EBF1FA] text-xs font-extrabold text-[#0B2545] transition-colors duration-200 group-hover:bg-[#0B2545] group-hover:text-[#F5B800]">
                         {dept.code}
                       </div>
                       <span className="text-sm sm:text-[15px] font-bold text-[#0B2545] truncate">
@@ -159,7 +166,7 @@ export default function LandingPage() {
                     </div>
 
                     <ChevronRight
-                      className="h-4 w-4 text-[#0B2545] shrink-0 transition-transform group-hover:translate-x-0.5"
+                      className="h-4 w-4 text-[#0B2545] shrink-0 transition-transform duration-200 group-hover:translate-x-1"
                       aria-hidden="true"
                     />
                   </Link>

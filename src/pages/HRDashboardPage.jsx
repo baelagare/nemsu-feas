@@ -27,6 +27,9 @@ import {
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
+import LoadingScreen from '../components/loading/LoadingScreen';
+import AnimatedNumber from '../components/loading/AnimatedNumber';
+import { DashboardSkeleton } from '../components/loading/Skeleton';
 import {
   API_BASE_URL,
   TOKEN_STORAGE_KEY,
@@ -212,8 +215,11 @@ export default function HRDashboardPage() {
     };
   }, [isHrAdmin]);
 
-  const handleLogout = () => {
-    logout();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsSigningOut(true);
+    await logout();
     navigate('/hr/login');
   };
 
@@ -709,7 +715,7 @@ export default function HRDashboardPage() {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition-all duration-200 active:scale-95 whitespace-nowrap ${
                     isActive
                       ? 'bg-[#0B2545] text-white shadow-subtle'
                       : 'text-slate-600 hover:text-[#0B2545] hover:bg-slate-50'
@@ -745,7 +751,9 @@ export default function HRDashboardPage() {
         {/* CRUD Notification Toast / Alert Banner */}
         {crudNotification && (
           <div
-            className={`rounded-2xl p-4 flex items-center justify-between gap-3 border shadow-subtle ${
+            key={crudNotification.message}
+            role="status"
+            className={`animate-fade-down rounded-2xl p-4 flex items-center justify-between gap-3 border shadow-subtle ${
               crudNotification.type === 'error'
                 ? 'bg-red-50 border-red-200 text-red-800'
                 : crudNotification.type === 'warning'
@@ -863,17 +871,19 @@ export default function HRDashboardPage() {
         {/* ===================================================================
             TAB 1: SYSTEM OVERVIEW
         =================================================================== */}
-        {activeTab === 'overview' && (
+        {isLoadingData && <DashboardSkeleton />}
+
+        {!isLoadingData && activeTab === 'overview' && (
           <>
             {/* 4-COLUMN MINIMALIST KPI CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
               {/* KPI 1 */}
-              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Submissions
                 </span>
                 <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
-                  {overview?.kpis?.total_evaluations ?? 0}
+                  <AnimatedNumber value={overview?.kpis?.total_evaluations ?? 0} />
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span>Anonymous ledger</span>
@@ -884,12 +894,12 @@ export default function HRDashboardPage() {
               </div>
 
               {/* KPI 2 */}
-              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Teachers Rated
                 </span>
                 <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
-                  {overview?.kpis?.evaluated_faculty_count ?? 0}
+                  <AnimatedNumber value={overview?.kpis?.evaluated_faculty_count ?? 0} />
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span>Of {overview?.kpis?.active_faculty_count ?? 0} active</span>
@@ -904,7 +914,7 @@ export default function HRDashboardPage() {
               </div>
 
               {/* KPI 3 */}
-              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Overall Mean
@@ -914,7 +924,7 @@ export default function HRDashboardPage() {
                   </span>
                 </div>
                 <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
-                  {overview?.kpis?.overall_mean ? Number(overview.kpis.overall_mean).toFixed(2) : '0.00'}
+                  <AnimatedNumber value={overview?.kpis?.overall_mean ?? 0} decimals={2} />
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span className="font-bold text-[#0B2545]">{overview?.kpis?.descriptive_rating ?? 'No Evaluations'}</span>
@@ -929,12 +939,12 @@ export default function HRDashboardPage() {
               </div>
 
               {/* KPI 4 */}
-              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between">
+              <div className="rounded-[24px] bg-white p-5 sm:p-6 border border-slate-200/80 shadow-card flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Written Remarks
                 </span>
                 <div className="text-3xl sm:text-4xl font-extrabold text-[#0B2545] tracking-tight my-2 tabular-nums">
-                  {feedbackItems.length}
+                  <AnimatedNumber value={feedbackItems.length} />
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span>Student comments</span>
@@ -950,7 +960,7 @@ export default function HRDashboardPage() {
             </div>
 
             {/* MAIN ANALYTICS GRID: Department Coverage (7 Cols) & Roster/Feedback Previews (5 Cols) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 stagger">
               {/* Left 7 Cols: Department Performance Table */}
               <div className="lg:col-span-7 rounded-[24px] bg-white border border-slate-200/80 shadow-card flex flex-col justify-between overflow-hidden">
                 <div>
@@ -984,7 +994,7 @@ export default function HRDashboardPage() {
                           <th className="py-3.5 px-4 text-right font-bold"></th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 stagger">
                         {filteredDepartments.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="py-8 px-5 text-center text-sm text-slate-500">
@@ -1021,7 +1031,7 @@ export default function HRDashboardPage() {
                                 <div className="flex items-center gap-2.5">
                                   <div className="h-1.5 flex-1 rounded-full bg-slate-200 overflow-hidden">
                                     <div
-                                      className="h-full bg-[#0B2545] rounded-full"
+                                      className="h-full bg-[#0B2545] rounded-full origin-left animate-bar-grow"
                                       style={{ width: `${dept.completion}%` }}
                                     />
                                   </div>
@@ -1165,8 +1175,8 @@ export default function HRDashboardPage() {
         {/* ===================================================================
             TAB 2: DEPARTMENT MATRIX (Full Domain Breakdown & Comparison)
         =================================================================== */}
-        {activeTab === 'departments' && (
-          <div className="flex flex-col gap-6">
+        {!isLoadingData && activeTab === 'departments' && (
+          <div className="flex flex-col gap-6 animate-fade-up">
             <div className="rounded-xl bg-white border border-slate-200 shadow-card overflow-hidden">
               <div className="p-5 sm:p-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1205,7 +1215,7 @@ export default function HRDashboardPage() {
                       <th className="py-3.5 px-5 text-right font-bold">Department Roster</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-slate-200 stagger">
                     {filteredDepartments.map((dept) => (
                       <tr key={dept.code} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-4 px-5">
@@ -1226,7 +1236,7 @@ export default function HRDashboardPage() {
                           </div>
                           <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                             <div
-                              className="h-full bg-[#0B2545] rounded-full"
+                              className="h-full bg-[#0B2545] rounded-full origin-left animate-bar-grow"
                               style={{ width: `${dept.completion}%` }}
                             />
                           </div>
@@ -1267,8 +1277,8 @@ export default function HRDashboardPage() {
         {/* ===================================================================
             TAB 3: FACULTY ROSTER (Complete 21-Faculty Directory & Inspector)
         =================================================================== */}
-        {activeTab === 'faculty' && (
-          <div className="flex flex-col gap-6">
+        {!isLoadingData && activeTab === 'faculty' && (
+          <div className="flex flex-col gap-6 animate-fade-up">
             <div className="rounded-xl bg-white border border-slate-200 shadow-card overflow-hidden">
               {/* Roster Sub-Header & Sort Controls */}
               <div className="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1338,7 +1348,7 @@ export default function HRDashboardPage() {
                       <th className="py-3.5 px-5 text-right font-bold">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-slate-200 stagger">
                     {filteredFaculty.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-10 px-5 text-center text-sm text-slate-500">
@@ -1445,8 +1455,8 @@ export default function HRDashboardPage() {
         {/* ===================================================================
             TAB 4: QUALITATIVE FEEDBACK & STUDENT REMARKS
         =================================================================== */}
-        {activeTab === 'sentiment' && (
-          <div className="flex flex-col gap-6">
+        {!isLoadingData && activeTab === 'sentiment' && (
+          <div className="flex flex-col gap-6 animate-fade-up">
             {/* Category Filter Pills */}
             <div className="rounded-xl bg-white p-5 border border-slate-200 shadow-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
@@ -1525,8 +1535,8 @@ export default function HRDashboardPage() {
         {/* ===================================================================
             TAB 5: EVALUATION FORM (RUBRIC & QUESTIONNAIRE INSTRUMENT)
         =================================================================== */}
-        {activeTab === 'rubric' && isHrAdmin && (
-          <div className="flex flex-col gap-6">
+        {!isLoadingData && activeTab === 'rubric' && isHrAdmin && (
+          <div className="flex flex-col gap-6 animate-fade-up">
             {/* Rubric Tab Header */}
             <div className="rounded-xl bg-white p-5 sm:p-6 border border-slate-200 shadow-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
@@ -1737,7 +1747,7 @@ export default function HRDashboardPage() {
                     </div>
                     <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                       <div
-                        className="h-full bg-[#0B2545] rounded-full"
+                        className="h-full bg-[#0B2545] rounded-full origin-left animate-bar-grow"
                         style={{ width: `${(Number(sec.score || 0) / 5) * 100}%` }}
                       />
                     </div>
@@ -1822,7 +1832,7 @@ export default function HRDashboardPage() {
                         <th className="p-3 text-right">Mean Score</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-slate-200 stagger">
                       {departmentMetrics.map((d) => (
                         <tr key={d.code} className="hover:bg-slate-50">
                           <td className="p-3 font-bold text-slate-900">{d.name}</td>
@@ -2440,6 +2450,11 @@ export default function HRDashboardPage() {
         {/* Institutional Footer */}
         <Footer />
       </main>
+
+      {/* Sign-out overlay */}
+      {isSigningOut && (
+        <LoadingScreen variant="overlay" message="Signing out" subMessage="Ending your secure session" />
+      )}
     </div>
   );
 }

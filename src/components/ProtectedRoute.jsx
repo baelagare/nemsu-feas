@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import LoadingScreen from './loading/LoadingScreen';
 
 /**
  * Route guard component for protected HR administrative views.
@@ -12,12 +13,10 @@ export default function ProtectedRoute({ children }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-9 w-9 border-4 border-[#0B2545] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-bold text-slate-600">Verifying institutional session...</p>
-        </div>
-      </div>
+      <LoadingScreen
+        message="Verifying institutional session"
+        subMessage={'Secure staff access \u00B7 FEAS'}
+      />
     );
   }
 
